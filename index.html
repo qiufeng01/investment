@@ -1,18 +1,18 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>个人投资计划</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <!-- SheetJS -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* ===== 完全保留原有样式 ===== */
         :root {
             --bg: #f5f7fa;
             --card-bg: #ffffff;
@@ -120,10 +120,15 @@
         <span class="main-title" id="mainTitle">📊 个人投资记录</span>
         <div style="display:flex; align-items:center; gap:12px;">
             <button class="btn btn-outline btn-xs" onclick="exportToExcel()">📥 导出Excel</button>
+            <button class="btn btn-outline btn-xs" onclick="exportJSON()">📦 导出JSON</button>
+            <button class="btn btn-outline btn-xs" onclick="document.getElementById('importFile').click()">📂 导入JSON</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
             <span class="sync-badge" id="syncStatus">⏳ 未登录</span>
+            <button class="btn btn-danger btn-xs" onclick="signOut()">🚪 退出</button>
         </div>
     </div>
 
+    <!-- 投资目标卡片 -->
     <div class="card">
         <div class="card-header"><span class="card-title">🎯 投资目标</span></div>
         <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
@@ -143,6 +148,7 @@
         <div class="muted" style="margin-top:6px;" id="goalMessage"></div>
     </div>
 
+    <!-- 收益率卡片 -->
     <div class="card">
         <div class="stat-grid">
             <div class="stat-item"><div class="stat-label">总收益率</div><div class="stat-value" id="totalReturn">--</div><div class="muted" id="totalReturnAmount"></div></div>
@@ -151,6 +157,7 @@
         </div>
     </div>
 
+    <!-- 持仓卡片 -->
     <div class="card">
         <div class="card-header"><span class="card-title">📦 持仓与资产</span><span class="muted">股票 · 基金 · 黄金 · 存款 · 现金</span></div>
         <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
@@ -169,11 +176,11 @@
         </div>
     </div>
 
+    <!-- 图表卡片 -->
     <div class="card">
         <div class="card-title">🥧 资产分布</div>
         <div id="pieChart" class="chart-wrap"></div>
     </div>
-
     <div class="card">
         <div class="card-title">📈 历史走势</div>
         <div class="tabs" id="chartTabs">
@@ -184,6 +191,7 @@
         <div id="barChart" class="chart-wrap" style="height:360px;"></div>
     </div>
 
+    <!-- 投入记录卡片 -->
     <div class="card">
         <div class="card-header"><span class="card-title">📋 投入记录</span><button class="btn btn-outline btn-xs" onclick="clearRecords()">清空</button></div>
         <div class="input-group" style="margin-bottom:10px;">
@@ -199,390 +207,599 @@
 <div class="toast-wrap" id="toastContainer"></div>
 
 <script>
-    (function() {
-        // ========== 您的 Firebase 配置 ==========
-        const firebaseConfig = {
-            apiKey: "AIzaSyBJ2WrpwVtKJTbNUtsMfcwTSv51WWXCoIw",
-            authDomain: "my-investment-88cf7.firebaseapp.com",
-            projectId: "my-investment-88cf7",
-            storageBucket: "my-investment-88cf7.firebasestorage.app",
-            messagingSenderId: "655623839931",
-            appId: "1:655623839931:web:662818de4ff6c73a8c099e"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+    // ============================================================
+    //  1. Supabase 配置（已嵌入你提供的信息）
+    // ============================================================
+    const SUPABASE_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2a3J3Y3hwc253cXh0Y3Vrb3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjk4NzIsImV4cCI6MjA5ODY0NTg3Mn0._oLjDmy5usDnVNoK9ilb_Vf4BZDTUIV5pCO_0T6X24Y';
 
-        // 全局状态
-        let app = {
-            goal: 100000,
-            targetYear: null,
-            manualMarketValue: null,
-            records: [],
-            assets: [],
-            snapshots: [],
-            lastUpdateDate: null,
-            lastManualRefresh: null,
-        };
-        let userDocRef = null;
-        let pieChart, barChart;
-        let currentChartType = 'totalValue';
-        const todayStr = new Date().toISOString().split('T')[0];
-        document.getElementById('recDate').value = todayStr;
-        document.getElementById('assetDate').value = todayStr;
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // 认证监听
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('syncStatus').textContent = '☁️ 已同步 (' + user.email + ')';
-                userDocRef = db.collection('users').doc(user.uid);
-                userDocRef.onSnapshot(doc => {
-                    if (doc.exists) {
-                        const d = doc.data();
-                        app.goal = d.goal || 100000;
-                        app.targetYear = d.targetYear || null;
-                        app.manualMarketValue = d.manualMarketValue ?? null;
-                        app.records = d.records || [];
-                        app.assets = d.assets || [];
-                        app.snapshots = d.snapshots || [];
-                        app.lastUpdateDate = d.lastUpdateDate || null;
-                        app.lastManualRefresh = d.lastManualRefresh || null;
-                        app.records.sort((a,b)=> new Date(b.date) - new Date(a.date));
-                    } else {
-                        userDocRef.set({
-                            goal: 100000, targetYear: null,
-                            manualMarketValue: null, records: [],
-                            assets: [], snapshots: [],
-                            lastUpdateDate: null, lastManualRefresh: null
-                        });
-                    }
-                    updateMainTitle();
-                    renderAll();
-                    checkAutoUpdate();
-                });
-            } else {
-                document.getElementById('syncStatus').textContent = '⏳ 未登录';
-                showLoginPrompt();
-            }
-        });
+    // ============================================================
+    //  2. 全局状态
+    // ============================================================
+    let app = {
+        goal: 100000,
+        targetYear: null,
+        manualMarketValue: null,
+        records: [],
+        assets: [],
+        snapshots: [],
+        lastUpdateDate: null,
+        lastManualRefresh: null,
+    };
+    let pieChart, barChart;
+    let currentChartType = 'totalValue';
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('recDate').value = todayStr;
+    document.getElementById('assetDate').value = todayStr;
 
-        function showLoginPrompt() {
-            const email = prompt('请输入登录邮箱（首次使用将自动注册）：');
-            if (!email) return;
-            const password = prompt('请输入密码：');
-            if (!password) return;
-            auth.signInWithEmailAndPassword(email, password).catch(error => {
-                if (error.code === 'auth/user-not-found') {
-                    auth.createUserWithEmailAndPassword(email, password).catch(err => {
-                        alert('注册失败：' + err.message);
-                    });
+    // ============================================================
+    //  3. 认证与登录
+    // ============================================================
+    async function signIn(email, password) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return data.user;
+    }
+    async function signUp(email, password) {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        return data.user;
+    }
+    async function signOut() {
+        await supabase.auth.signOut();
+        app.records = []; app.assets = []; app.snapshots = [];
+        renderAll();
+        document.getElementById('syncStatus').textContent = '⏳ 未登录';
+        showToast('已退出登录');
+        setTimeout(showLoginPrompt, 500);
+    }
+
+    function showLoginPrompt() {
+        const email = prompt('请输入登录邮箱（首次使用将自动注册）：');
+        if (!email) return;
+        const password = prompt('请输入密码：');
+        if (!password) return;
+        signIn(email, password)
+            .then(user => {
+                showToast('✅ 登录成功');
+                loadUserData();
+            })
+            .catch(err => {
+                if (err.message.includes('Invalid login credentials')) {
+                    signUp(email, password)
+                        .then(user => {
+                            showToast('✅ 注册成功');
+                            initializeUserData();
+                            loadUserData();
+                        })
+                        .catch(regErr => alert('注册失败：' + regErr.message));
                 } else {
-                    alert('登录失败：' + error.message);
+                    alert('登录失败：' + err.message);
                 }
             });
+    }
+
+    // ============================================================
+    //  4. 数据读写（Supabase）
+    // ============================================================
+    async function loadUserData() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            document.getElementById('syncStatus').textContent = '⏳ 未登录';
+            return;
+        }
+        document.getElementById('syncStatus').textContent = '☁️ 已同步 (' + user.email + ')';
+
+        const { data, error } = await supabase
+            .from('user_data')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (error) {
+            console.error('加载数据失败', error);
+            showToast('❌ 加载数据失败');
+            return;
         }
 
-        function save() {
-            if (!userDocRef) return;
-            userDocRef.set({
-                goal: app.goal, targetYear: app.targetYear,
-                manualMarketValue: app.manualMarketValue,
-                records: app.records, assets: app.assets,
-                snapshots: app.snapshots,
-                lastUpdateDate: app.lastUpdateDate,
-                lastManualRefresh: app.lastManualRefresh
-            }, { merge: true }).catch(e => console.warn('保存失败', e));
+        if (data) {
+            app.goal = data.goal || 100000;
+            app.targetYear = data.target_year || null;
+            app.manualMarketValue = data.manual_market_value ?? null;
+            app.records = data.records || [];
+            app.assets = data.assets || [];
+            app.snapshots = data.snapshots || [];
+            app.lastUpdateDate = data.last_update_date || null;
+            app.lastManualRefresh = data.last_manual_refresh || null;
+            app.records.sort((a,b) => new Date(b.date) - new Date(a.date));
+        } else {
+            await initializeUserData();
         }
+        updateMainTitle();
+        renderAll();
+        checkAutoUpdate();
+    }
 
-        function updateMainTitle() {
-            const el = document.getElementById('mainTitle');
-            el.textContent = app.targetYear ? '📊 ' + app.targetYear + '投资计划' : '📊 个人投资记录';
-        }
-
-        function formatMoney(v) {
-            if (v === null || v === undefined || isNaN(v)) return '--';
-            return '¥' + Math.abs(v).toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
-        }
-        function formatPercent(v) {
-            if (v === null || v === undefined || isNaN(v)) return '--';
-            return (v>=0?'+':'') + (v*100).toFixed(2) + '%';
-        }
-        function daysBetween(d1, d2) {
-            return Math.max(0, Math.floor((new Date(d2) - new Date(d1)) / 86400000));
-        }
-
-        // 行情接口
-        function fetchStock(code, cb) {
-            const s = document.createElement('script');
-            const name = 'cb' + Date.now();
-            window[name] = data => { cb(data); delete window[name]; s.remove(); };
-            s.src = `https://hq.sinajs.cn/list=${code}&callback=${name}`;
-            s.onerror = () => cb(null);
-            document.body.appendChild(s);
-        }
-        function fetchFund(code, cb) {
-            const s = document.createElement('script');
-            const name = 'fcb' + Date.now();
-            window[name] = data => { cb(data); delete window[name]; s.remove(); };
-            s.src = `https://fundgz.1234567.com.cn/js/${code}.js?callback=${name}`;
-            s.onerror = () => cb(null);
-            document.body.appendChild(s);
-        }
-        function parseStock(raw) {
-            if (!raw) return null;
-            const m = raw.match(/"([^"]+)"/);
-            if (!m) return null;
-            const f = m[1].split(',');
-            return { name: f[0], price: parseFloat(f[3]), change: parseFloat(f[3])/parseFloat(f[2])-1 };
-        }
-        function parseFund(data) {
-            if (!data || !data.fundcode) return null;
-            const price = parseFloat(data.gsz || data.dwjz);
-            return { name: data.name, price, change: parseFloat(data.gszzl || 0)/100 };
-        }
-        function fetchGold(cb) {
-            fetchStock('au9999', raw => {
-                const info = parseStock(raw);
-                cb(info ? {...info, name:'黄金现货Au99.99'} : null);
+    async function initializeUserData() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { error } = await supabase
+            .from('user_data')
+            .insert({
+                user_id: user.id,
+                goal: 100000,
+                target_year: null,
+                manual_market_value: null,
+                records: [],
+                assets: [],
+                snapshots: [],
+                last_update_date: null,
+                last_manual_refresh: null
             });
-        }
+        if (error) console.error('初始化数据失败', error);
+    }
 
-        async function refreshQuotes(force = false) {
-            const now = new Date();
-            const today = now.toISOString().split('T')[0];
-            if (!force && app.lastUpdateDate === today) return;
-            if (!force && now.getHours() !== 0) {
-                scheduleMidnightUpdate();
-                return;
-            }
-            for (let asset of app.assets) {
-                if (asset.type === 'stock' || asset.type === 'fund') {
-                    await new Promise(resolve => {
-                        const fetcher = asset.type === 'stock' ? fetchStock : fetchFund;
-                        fetcher(asset.code, info => {
-                            if (info) { asset.currentPrice = info.price; asset.name = info.name; }
-                            resolve();
-                        });
-                    });
-                } else if (asset.type === 'gold') {
-                    await new Promise(resolve => fetchGold(info => {
+    async function save() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            showToast('❌ 未登录，无法保存');
+            return;
+        }
+        const { error } = await supabase
+            .from('user_data')
+            .upsert({
+                user_id: user.id,
+                goal: app.goal,
+                target_year: app.targetYear,
+                manual_market_value: app.manualMarketValue,
+                records: app.records,
+                assets: app.assets,
+                snapshots: app.snapshots,
+                last_update_date: app.lastUpdateDate,
+                last_manual_refresh: app.lastManualRefresh,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+        if (error) {
+            console.error('保存失败', error);
+            showToast('❌ 数据保存失败');
+        }
+        // 成功时不弹提示，避免频繁干扰
+    }
+
+    // ============================================================
+    //  5. 辅助函数
+    // ============================================================
+    function formatMoney(v) {
+        if (v === null || v === undefined || isNaN(v)) return '--';
+        return '¥' + Math.abs(v).toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    function formatPercent(v) {
+        if (v === null || v === undefined || isNaN(v)) return '--';
+        return (v>=0?'+':'') + (v*100).toFixed(2) + '%';
+    }
+    function daysBetween(d1, d2) {
+        return Math.max(0, Math.floor((new Date(d2) - new Date(d1)) / 86400000));
+    }
+    function updateMainTitle() {
+        const el = document.getElementById('mainTitle');
+        el.textContent = app.targetYear ? '📊 ' + app.targetYear + '年投资计划' : '📊 个人投资记录';
+    }
+    function showToast(msg, type) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => t.remove(), 2600);
+    }
+
+    // ============================================================
+    //  6. 行情接口（沿用原 JSONP 方式）
+    // ============================================================
+    function fetchStock(code, cb) {
+        const s = document.createElement('script');
+        const name = 'cb' + Date.now();
+        window[name] = data => { cb(data); delete window[name]; s.remove(); };
+        s.src = `https://hq.sinajs.cn/list=${code}&callback=${name}`;
+        s.onerror = () => cb(null);
+        document.body.appendChild(s);
+    }
+    function fetchFund(code, cb) {
+        const s = document.createElement('script');
+        const name = 'fcb' + Date.now();
+        window[name] = data => { cb(data); delete window[name]; s.remove(); };
+        s.src = `https://fundgz.1234567.com.cn/js/${code}.js?callback=${name}`;
+        s.onerror = () => cb(null);
+        document.body.appendChild(s);
+    }
+    function parseStock(raw) {
+        if (!raw) return null;
+        const m = raw.match(/"([^"]+)"/);
+        if (!m) return null;
+        const f = m[1].split(',');
+        return { name: f[0], price: parseFloat(f[3]), change: parseFloat(f[3])/parseFloat(f[2])-1 };
+    }
+    function parseFund(data) {
+        if (!data || !data.fundcode) return null;
+        const price = parseFloat(data.gsz || data.dwjz);
+        return { name: data.name, price, change: parseFloat(data.gszzl || 0)/100 };
+    }
+    function fetchGold(cb) {
+        fetchStock('au9999', raw => {
+            const info = parseStock(raw);
+            cb(info ? {...info, name:'黄金现货Au99.99'} : null);
+        });
+    }
+
+    async function refreshQuotes(force = false) {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        if (!force && app.lastUpdateDate === today) return;
+        if (!force && now.getHours() !== 0) {
+            scheduleMidnightUpdate();
+            return;
+        }
+        for (let asset of app.assets) {
+            if (asset.type === 'stock' || asset.type === 'fund') {
+                await new Promise(resolve => {
+                    const fetcher = asset.type === 'stock' ? fetchStock : fetchFund;
+                    fetcher(asset.code, info => {
                         if (info) { asset.currentPrice = info.price; asset.name = info.name; }
                         resolve();
-                    }));
-                } else if (asset.type === 'cash') {
-                    await new Promise(resolve => fetchFund(asset.code || '000198', data => {
-                        const info = parseFund(data);
-                        if (info && info.price) {
-                            asset.yieldRate = info.price / 10000;
-                            asset.currentPrice = asset.amount + calcCashProfit(asset);
-                        }
-                        resolve();
-                    }));
-                }
+                    });
+                });
+            } else if (asset.type === 'gold') {
+                await new Promise(resolve => fetchGold(info => {
+                    if (info) { asset.currentPrice = info.price; asset.name = info.name; }
+                    resolve();
+                }));
+            } else if (asset.type === 'cash') {
+                await new Promise(resolve => fetchFund(asset.code || '000198', data => {
+                    const info = parseFund(data);
+                    if (info && info.price) {
+                        asset.yieldRate = info.price / 10000;
+                        asset.currentPrice = asset.amount + calcCashProfit(asset);
+                    }
+                    resolve();
+                }));
             }
-            app.lastUpdateDate = today;
-            checkDeposits();
-            saveSnapshot();
-            save();
-            renderAll();
-            showToast('✅ 行情已更新');
         }
+        app.lastUpdateDate = today;
+        checkDeposits();
+        saveSnapshot();
+        await save();
+        renderAll();
+        showToast('✅ 行情已更新');
+    }
 
-        function calcCashProfit(asset) {
-            const days = daysBetween(asset.date || todayStr, todayStr);
-            return asset.amount * (asset.yieldRate || 0.0001) * days;
-        }
+    function calcCashProfit(asset) {
+        if (!asset.date || !asset.yieldRate) return 0;
+        const days = daysBetween(asset.date, todayStr);
+        return asset.amount * (asset.yieldRate) * (days / 365);
+    }
 
-        function checkDeposits() {
-            const today = new Date(todayStr);
-            app.assets.forEach(a => {
-                if (a.type === 'deposit' && a.maturityDate && new Date(a.maturityDate) <= today && !a.matured) {
-                    a.matured = true;
-                    a.maturityValue = a.amount + a.amount * (a.rate/100) * (daysBetween(a.date, a.maturityDate)/365);
-                }
+    function checkDeposits() {
+        const today = new Date(todayStr);
+        app.assets.forEach(a => {
+            if (a.type === 'deposit' && a.maturityDate && new Date(a.maturityDate) <= today && !a.matured) {
+                a.matured = true;
+                a.maturityValue = a.amount + a.amount * (a.rate/100) * (daysBetween(a.date, a.maturityDate)/365);
+            }
+        });
+    }
+
+    function saveSnapshot() {
+        const m = computeMetrics();
+        const today = new Date().toISOString().split('T')[0];
+        const last = app.snapshots[app.snapshots.length-1];
+        if (last && last.date === today) {
+            Object.assign(last, {
+                totalValue: m.totalMarketValue || m.totalInvest,
+                annualReturn: m.annualReturn,
+                totalReturnRate: m.totalReturn,
+                totalInvest: m.totalInvest
+            });
+        } else {
+            app.snapshots.push({
+                date: today,
+                totalValue: m.totalMarketValue || m.totalInvest,
+                annualReturn: m.annualReturn,
+                totalReturnRate: m.totalReturn,
+                totalInvest: m.totalInvest
             });
         }
+        if (app.snapshots.length > 400) app.snapshots.shift();
+    }
 
-        function saveSnapshot() {
-            const m = computeMetrics();
-            const last = app.snapshots[app.snapshots.length-1];
-            if (!last || last.date !== todayStr) {
-                app.snapshots.push({ date: todayStr, totalValue: m.totalMarketValue || m.totalInvest, annualReturn: m.annualReturn, totalReturnRate: m.totalReturn, totalInvest: m.totalInvest });
-                if (app.snapshots.length > 400) app.snapshots.shift();
+    function scheduleMidnightUpdate() {
+        const now = new Date();
+        const target = new Date(now);
+        target.setHours(24,0,0,0);
+        setTimeout(() => refreshQuotes(true), target - now);
+    }
+
+    function checkAutoUpdate() {
+        if (app.lastUpdateDate !== todayStr) {
+            if (new Date().getHours() === 0) refreshQuotes(true);
+            else scheduleMidnightUpdate();
+        }
+    }
+
+    async function manualRefresh() {
+        if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 30*60*1000) {
+            showToast('⏳ 手动刷新需间隔30分钟', 'warning');
+            return;
+        }
+        app.lastManualRefresh = Date.now();
+        await save();
+        await refreshQuotes(true);
+        showToast('🔄 手动刷新完成');
+    }
+
+    // ============================================================
+    //  7. 核心计算
+    // ============================================================
+    function computeMetrics() {
+        const totalInvest = app.records.reduce((s,r) => s + r.amount, 0);
+        let marketValue = app.manualMarketValue;
+        if (marketValue === null && app.assets.length > 0) {
+            marketValue = app.assets.reduce((s, a) => {
+                if (a.type === 'deposit') return s + (a.matured ? a.maturityValue : a.amount);
+                if (a.type === 'cash') return s + (a.currentPrice || a.amount);
+                return s + (a.currentPrice || a.cost) * (a.amount || 0);
+            }, 0);
+        }
+        const goal = app.goal || 1;
+        let weightedDays = 0, totalAmt = 0;
+        const now = new Date(todayStr);
+        app.records.forEach(r => {
+            const d = new Date(r.date);
+            const days = Math.max(0, Math.floor((now - d)/86400000));
+            weightedDays += r.amount * days;
+            totalAmt += r.amount;
+        });
+        const avgYears = totalAmt > 0 ? (weightedDays/totalAmt)/365.25 : 0;
+        let totalReturn = null, annualReturn = null;
+        if (marketValue !== null && totalInvest > 0) {
+            totalReturn = (marketValue - totalInvest) / totalInvest;
+            if (avgYears > 0.001) {
+                const ratio = marketValue / totalInvest;
+                if (ratio > 0) annualReturn = Math.pow(ratio, 1/avgYears) - 1;
+                else annualReturn = -1;
+            } else {
+                annualReturn = totalReturn;
             }
         }
+        return { totalInvest, totalMarketValue: marketValue, totalReturn, annualReturn, goalComplete: marketValue !== null ? marketValue/goal : totalInvest/goal, avgYears };
+    }
 
-        function scheduleMidnightUpdate() {
-            const now = new Date();
-            const target = new Date(now);
-            target.setHours(24,0,0,0);
-            setTimeout(() => refreshQuotes(true), target - now);
-        }
+    // ============================================================
+    //  8. 渲染界面
+    // ============================================================
+    function renderAll() {
+        const m = computeMetrics();
+        document.getElementById('totalMarketValue').textContent = m.totalMarketValue !== null ? formatMoney(m.totalMarketValue) : '--';
+        document.getElementById('totalInvestDisplay').textContent = formatMoney(m.totalInvest);
+        document.getElementById('goalPercent').textContent = m.totalMarketValue !== null ? (m.goalComplete*100).toFixed(1)+'%' : '--';
+        document.getElementById('goalProgress').style.width = Math.min(m.goalComplete*100, 100) + '%';
+        document.getElementById('goalProgress').className = 'progress-fill' + (m.goalComplete >= 1 ? ' over' : '');
+        document.getElementById('goalMessage').textContent = m.totalMarketValue !== null ? (m.goalComplete>=1 ? '🎉 目标已达成' : '距离目标还差 ' + formatMoney(app.goal - m.totalMarketValue)) : '';
+        document.getElementById('totalReturn').textContent = formatPercent(m.totalReturn);
+        document.getElementById('totalReturnAmount').textContent = m.totalReturn !== null ? '盈亏 ' + formatMoney(m.totalMarketValue - m.totalInvest) : '';
+        document.getElementById('annualReturn').textContent = formatPercent(m.annualReturn);
+        document.getElementById('annualNote').textContent = m.avgYears > 0 ? '加权投资约' + (m.avgYears*12).toFixed(1)+'个月' : '';
+        document.getElementById('updateStatus').textContent = app.lastUpdateDate === todayStr ? '今日已更新' : '待更新';
+        document.getElementById('goalInput').value = app.goal;
+        document.getElementById('targetYearInput').value = app.targetYear || '';
+        renderAssetTable();
+        renderRecordTable();
+        renderCharts();
+    }
 
-        function checkAutoUpdate() {
-            if (app.lastUpdateDate !== todayStr) {
-                if (new Date().getHours() === 0) refreshQuotes(true);
-                else scheduleMidnightUpdate();
+    function renderAssetTable() {
+        const tbody = document.querySelector('#assetTable tbody');
+        if (!app.assets.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产</td></tr>'; return; }
+        tbody.innerHTML = app.assets.map(a => {
+            let price = a.currentPrice || a.cost || 0;
+            let market = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) : (a.type==='cash' ? (a.currentPrice||a.amount) : price*(a.amount||0));
+            let profit = '';
+            if (a.type==='deposit') profit = a.matured ? '已到期' : '存续中';
+            else if (a.type==='cash') profit = '收益约'+formatMoney(market - a.amount);
+            else { const p = (price - a.cost)*a.amount; profit = `<span class="${p>=0?'positive':'negative'}">${formatMoney(p)}</span>`; }
+            let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
+            if (a.type==='deposit' && a.matured) actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')">转存</button>`;
+            return `<tr><td>${a.type==='stock'?'股票':a.type==='fund'?'基金':a.type==='gold'?'黄金':a.type==='deposit'?'存款':'现金'}</td><td>${a.name||a.code||'—'}</td><td>${a.amount||''}</td><td>${a.cost?formatMoney(a.cost):(a.rate+'%')}</td><td>${formatMoney(price)}</td><td>${formatMoney(market)}</td><td>${profit}</td><td>${actions}</td></tr>`;
+        }).join('');
+    }
+
+    function renderRecordTable() {
+        const tbody = document.querySelector('#recordTable tbody');
+        if (!app.records.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">暂无投入记录</td></tr>'; return; }
+        tbody.innerHTML = app.records.map(r => `<tr><td>${r.date}</td><td>${formatMoney(r.amount)}</td><td>${daysBetween(r.date, todayStr)}天</td><td>${r.note||''}</td><td><button class="btn btn-xs btn-outline" onclick="deleteRecord('${r.id}')">删除</button></td></tr>`).join('');
+    }
+
+    function renderCharts() {
+        if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
+        if (!barChart) barChart = echarts.init(document.getElementById('barChart'));
+        const assetsWithValue = app.assets.filter(a => {
+            let mkt = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) : (a.type==='cash' ? (a.currentPrice||a.amount) : (a.currentPrice||a.cost)*(a.amount||0));
+            return mkt > 0;
+        });
+        pieChart.setOption({
+            tooltip:{trigger:'item'},
+            series:[{type:'pie',radius:['45%','70%'],label:{show:true,formatter:'{b}: {d}%'},
+                data:assetsWithValue.map(a=>({name:a.name||a.code||a.type,value:a.type==='deposit'?(a.matured?a.maturityValue:a.amount):(a.type==='cash'?(a.currentPrice||a.amount):(a.currentPrice||a.cost)*(a.amount||0))}))}]
+        });
+        const snaps = app.snapshots;
+        if (!snaps.length) { barChart.setOption({title:{text:'暂无历史数据'}}); return; }
+        const dates = snaps.map(s=>s.date);
+        let yData, name;
+        if (currentChartType==='totalValue') { yData=snaps.map(s=>s.totalValue); name='总市值'; }
+        else if (currentChartType==='annualReturn') { yData=snaps.map(s=>s.annualReturn!=null?(s.annualReturn*100).toFixed(2):null); name='年化收益率(%)'; }
+        else { yData=snaps.map(s=>s.totalReturnRate!=null?(s.totalReturnRate*100).toFixed(2):null); name='总收益率(%)'; }
+        barChart.setOption({
+            tooltip:{trigger:'axis'}, xAxis:{data:dates,axisLabel:{rotate:25}}, yAxis:{name},
+            dataZoom:[{type:'slider',height:20,bottom:8}],
+            series:[{data:yData,type:'bar',color:'#3b5f7a'}]
+        });
+    }
+
+    // ============================================================
+    //  9. 用户操作函数
+    // ============================================================
+    async function saveGoal() {
+        const v = parseFloat(document.getElementById('goalInput').value);
+        if(v>0){app.goal=v;await save();renderAll();showToast('目标金额已保存');}
+    }
+    async function saveTargetYear() {
+        const v = parseInt(document.getElementById('targetYearInput').value);
+        if(!isNaN(v)&&v>=2025){app.targetYear=v;updateMainTitle();await save();renderAll();showToast('目标年份已设定为 '+v);}
+    }
+    async function addRecord() {
+        const d=document.getElementById('recDate').value, a=parseFloat(document.getElementById('recAmount').value), n=document.getElementById('recNote').value.trim();
+        if(!d||isNaN(a)||a<=0)return;
+        app.records.push({id:'r'+Date.now(),date:d,amount:a,note:n});
+        app.records.sort((a,b)=>new Date(b.date)-new Date(a.date));
+        await save();renderAll();
+        document.getElementById('recAmount').value=''; document.getElementById('recNote').value='';
+    }
+    async function deleteRecord(id) {
+        app.records=app.records.filter(r=>r.id!==id);
+        await save();renderAll();
+    }
+    async function clearRecords() {
+        if(confirm('清空所有投入记录？')){app.records=[];await save();renderAll();}
+    }
+    async function addAsset() {
+        const type=document.getElementById('assetType').value, code=document.getElementById('assetCode').value.trim(), amount=parseFloat(document.getElementById('assetAmount').value), cost=parseFloat(document.getElementById('assetCost').value), date=document.getElementById('assetDate').value;
+        if(!date||isNaN(amount)||amount<=0)return;
+        const asset={id:'a'+Date.now(),type,code:code||(type==='gold'?'au9999':''),amount,cost:type==='deposit'||type==='cash'?undefined:cost,rate:type==='deposit'?cost:undefined,date,currentPrice:type==='cash'?amount:(type==='deposit'?undefined:cost),name:''};
+        if(type==='deposit'){const m=parseInt(code)||12;const mat=new Date(date);mat.setMonth(mat.getMonth()+m);asset.maturityDate=mat.toISOString().split('T')[0];asset.matured=false;asset.rate=cost;}
+        app.assets.push(asset);
+        await save();renderAll();
+        document.getElementById('assetCode').value='';document.getElementById('assetAmount').value='';document.getElementById('assetCost').value='';
+        refreshQuotes(true);
+    }
+    async function removeAsset(id) {
+        if(!confirm('确认删除此资产？')) return;
+        app.assets=app.assets.filter(a=>a.id!==id);
+        await save();renderAll();
+    }
+    async function rolloverDeposit(id) {
+        const deposit=app.assets.find(a=>a.id===id);
+        if(!deposit||!deposit.matured)return;
+        const old=deposit.maturityValue, na=parseFloat(prompt('转存金额（本息合计 '+formatMoney(old)+'）',old.toFixed(2)));
+        if(isNaN(na)||na<=0)return;
+        const nr=parseFloat(prompt('新年化利率（%）',deposit.rate?.toFixed(2)||'2.5'));
+        if(isNaN(nr))return;
+        const tm=parseInt(prompt('期限（月）','12'));
+        if(isNaN(tm))return;
+        const diff=na-old;
+        app.assets=app.assets.filter(a=>a.id!==id);
+        const mat=new Date(todayStr); mat.setMonth(mat.getMonth()+tm);
+        app.assets.push({id:'d'+Date.now(),type:'deposit',code:'',amount:na,rate:nr,date:todayStr,maturityDate:mat.toISOString().split('T')[0],matured:false,name:'定期存款'});
+        if(diff>0.01) app.records.push({id:'r'+Date.now(),date:todayStr,amount:diff,note:'存款转存追加投入'});
+        else if(diff<-0.01) { const cash=app.assets.find(a=>a.type==='cash'); if(cash) cash.amount+=Math.abs(diff); else app.assets.push({id:'c'+Date.now(),type:'cash',code:'000198',amount:Math.abs(diff),date:todayStr,currentPrice:Math.abs(diff),name:'余额宝'}); }
+        await save();renderAll();showToast('✅ 转存完成');
+    }
+
+    function exportToExcel() {
+        const wb = XLSX.utils.book_new();
+        const ad=[['类型','代码/名称','数量/金额','成本/利率','现价','市值','状态']];
+        app.assets.forEach(a=>{ let mkt=a.type==='deposit'?(a.matured?a.maturityValue:a.amount):(a.type==='cash'?(a.currentPrice||a.amount):(a.currentPrice||a.cost)*(a.amount||0)); let st=a.type==='deposit'?(a.matured?'已到期':'存续中'):''; ad.push([a.type,a.name||a.code||'',a.amount||'',a.type==='deposit'?(a.rate+'%'):(a.cost||''),a.currentPrice||'',mkt,st]); });
+        XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ad),'持仓明细');
+        const rd=[['日期','金额','备注']]; app.records.forEach(r=>rd.push([r.date,r.amount,r.note||'']));
+        XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rd),'投入记录');
+        if(app.snapshots.length){ const sd=[['日期','总市值','年化收益率','总收益率','总投入']]; app.snapshots.forEach(s=>sd.push([s.date,s.totalValue,s.annualReturn!=null?(s.annualReturn*100).toFixed(2)+'%':'',s.totalReturnRate!=null?(s.totalReturnRate*100).toFixed(2)+'%':'',s.totalInvest])); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sd),'历史快照'); }
+        XLSX.writeFile(wb,'投资记录_'+todayStr+'.xlsx');
+        showToast('📥 Excel已导出');
+    }
+
+    function exportJSON() {
+        const data = {
+            goal: app.goal,
+            targetYear: app.targetYear,
+            manualMarketValue: app.manualMarketValue,
+            records: app.records,
+            assets: app.assets,
+            snapshots: app.snapshots,
+            lastUpdateDate: app.lastUpdateDate,
+            lastManualRefresh: app.lastManualRefresh,
+            exportDate: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `投资数据_${todayStr}.json`;
+        a.click();
+        showToast('📦 JSON已导出');
+    }
+
+    function importJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!confirm('导入将覆盖当前数据，确认继续？')) return;
+                app.goal = data.goal || 100000;
+                app.targetYear = data.targetYear || null;
+                app.manualMarketValue = data.manualMarketValue ?? null;
+                app.records = data.records || [];
+                app.assets = data.assets || [];
+                app.snapshots = data.snapshots || [];
+                app.lastUpdateDate = data.lastUpdateDate || null;
+                app.lastManualRefresh = data.lastManualRefresh || null;
+                app.records.sort((a,b) => new Date(b.date) - new Date(a.date));
+                await save();
+                renderAll();
+                showToast('✅ 数据导入成功');
+            } catch(err) {
+                showToast('❌ 文件格式错误');
             }
-        }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
 
-        async function manualRefresh() {
-            if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 30*60*1000) {
-                showToast('⏳ 手动刷新需间隔30分钟', 'warning'); return;
-            }
-            app.lastManualRefresh = Date.now();
-            save();
-            await refreshQuotes(true);
-            showToast('🔄 手动刷新完成');
-        }
+    // ============================================================
+    //  10. 页面初始化与事件绑定
+    // ============================================================
+    document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click',function(){
+        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        currentChartType=this.dataset.type;
+        renderCharts();
+    }));
 
-        function computeMetrics() {
-            const totalInvest = app.records.reduce((s,r) => s + r.amount, 0);
-            let marketValue = app.manualMarketValue;
-            if (marketValue === null && app.assets.length > 0) {
-                marketValue = app.assets.reduce((s, a) => {
-                    if (a.type === 'deposit') return s + (a.matured ? a.maturityValue : a.amount);
-                    if (a.type === 'cash') return s + (a.currentPrice || a.amount);
-                    return s + (a.currentPrice || a.cost) * (a.amount || 0);
-                }, 0);
-            }
-            const goal = app.goal || 1;
-            let weightedDays = 0, totalAmt = 0;
-            const now = new Date(todayStr);
-            app.records.forEach(r => {
-                const d = new Date(r.date);
-                const days = Math.max(0, Math.floor((now - d)/86400000));
-                weightedDays += r.amount * days;
-                totalAmt += r.amount;
-            });
-            const avgYears = totalAmt > 0 ? (weightedDays/totalAmt)/365.25 : 0;
-            let totalReturn = null, annualReturn = null;
-            if (marketValue !== null && totalInvest > 0) {
-                totalReturn = (marketValue - totalInvest) / totalInvest;
-                if (avgYears > 0.001) annualReturn = Math.pow(marketValue/totalInvest, 1/avgYears) - 1;
-                else if (totalInvest > 0) annualReturn = totalReturn;
-            }
-            return { totalInvest, totalMarketValue: marketValue, totalReturn, annualReturn, goalComplete: marketValue !== null ? marketValue/goal : totalInvest/goal, avgYears };
-        }
+    // 暴露全局函数
+    window.saveGoal = saveGoal;
+    window.saveTargetYear = saveTargetYear;
+    window.addRecord = addRecord;
+    window.deleteRecord = deleteRecord;
+    window.clearRecords = clearRecords;
+    window.addAsset = addAsset;
+    window.removeAsset = removeAsset;
+    window.rolloverDeposit = rolloverDeposit;
+    window.exportToExcel = exportToExcel;
+    window.exportJSON = exportJSON;
+    window.importJSON = importJSON;
+    window.manualRefresh = manualRefresh;
+    window.signOut = signOut;
 
-        function renderAll() {
-            const m = computeMetrics();
-            document.getElementById('totalMarketValue').textContent = m.totalMarketValue !== null ? formatMoney(m.totalMarketValue) : '--';
-            document.getElementById('totalInvestDisplay').textContent = formatMoney(m.totalInvest);
-            document.getElementById('goalPercent').textContent = m.totalMarketValue !== null ? (m.goalComplete*100).toFixed(1)+'%' : '--';
-            document.getElementById('goalProgress').style.width = Math.min(m.goalComplete*100, 100) + '%';
-            document.getElementById('goalProgress').className = 'progress-fill' + (m.goalComplete >= 1 ? ' over' : '');
-            document.getElementById('goalMessage').textContent = m.totalMarketValue !== null ? (m.goalComplete>=1 ? '🎉 目标已达成' : '距离目标还差 ' + formatMoney(app.goal - m.totalMarketValue)) : '';
-            document.getElementById('totalReturn').textContent = formatPercent(m.totalReturn);
-            document.getElementById('totalReturnAmount').textContent = m.totalReturn !== null ? '盈亏 ' + formatMoney(m.totalMarketValue - m.totalInvest) : '';
-            document.getElementById('annualReturn').textContent = formatPercent(m.annualReturn);
-            document.getElementById('annualNote').textContent = m.avgYears > 0 ? '加权投资约' + (m.avgYears*12).toFixed(1)+'个月' : '';
-            document.getElementById('updateStatus').textContent = app.lastUpdateDate === todayStr ? '今日已更新' : '待更新';
-            document.getElementById('goalInput').value = app.goal;
-            document.getElementById('targetYearInput').value = app.targetYear || '';
-            renderAssetTable();
-            renderRecordTable();
-            renderCharts();
+    // 启动应用
+    window.onload = async function() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await loadUserData();
+        } else {
+            showLoginPrompt();
         }
-
-        function renderAssetTable() {
-            const tbody = document.querySelector('#assetTable tbody');
-            if (!app.assets.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产</td></tr>'; return; }
-            tbody.innerHTML = app.assets.map(a => {
-                let price = a.currentPrice || a.cost || 0;
-                let market = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) : (a.type==='cash' ? (a.currentPrice||a.amount) : price*(a.amount||0));
-                let profit = '';
-                if (a.type==='deposit') profit = a.matured ? '已到期' : '存续中';
-                else if (a.type==='cash') profit = '收益约'+formatMoney(market - a.amount);
-                else { const p = (price - a.cost)*a.amount; profit = `<span class="${p>=0?'positive':'negative'}">${formatMoney(p)}</span>`; }
-                let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
-                if (a.type==='deposit' && a.matured) actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')">转存</button>`;
-                return `<tr><td>${a.type==='stock'?'股票':a.type==='fund'?'基金':a.type==='gold'?'黄金':a.type==='deposit'?'存款':'现金'}</td><td>${a.name||a.code||'—'}</td><td>${a.amount||''}</td><td>${a.cost?formatMoney(a.cost):(a.rate+'%')}</td><td>${formatMoney(price)}</td><td>${formatMoney(market)}</td><td>${profit}</td><td>${actions}</td></tr>`;
-            }).join('');
-        }
-
-        function renderRecordTable() {
-            const tbody = document.querySelector('#recordTable tbody');
-            if (!app.records.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">暂无投入记录</td></tr>'; return; }
-            tbody.innerHTML = app.records.map(r => `<tr><td>${r.date}</td><td>${formatMoney(r.amount)}</td><td>${daysBetween(r.date, todayStr)}天</td><td>${r.note||''}</td><td><button class="btn btn-xs btn-outline" onclick="deleteRecord('${r.id}')">删除</button></td></tr>`).join('');
-        }
-
-        function renderCharts() {
-            if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
-            if (!barChart) barChart = echarts.init(document.getElementById('barChart'));
-            const assetsWithValue = app.assets.filter(a => {
-                let mkt = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) : (a.type==='cash' ? (a.currentPrice||a.amount) : (a.currentPrice||a.cost)*(a.amount||0));
-                return mkt > 0;
-            });
-            pieChart.setOption({
-                tooltip:{trigger:'item'},
-                series:[{type:'pie',radius:['45%','70%'],label:{show:true,formatter:'{b}: {d}%'},
-                    data:assetsWithValue.map(a=>({name:a.name||a.code||a.type,value:a.type==='deposit'?(a.matured?a.maturityValue:a.amount):(a.type==='cash'?(a.currentPrice||a.amount):(a.currentPrice||a.cost)*(a.amount||0))}))}]
-            });
-            const snaps = app.snapshots;
-            if (!snaps.length) { barChart.setOption({title:{text:'暂无历史数据'}}); return; }
-            const dates = snaps.map(s=>s.date);
-            let yData, name;
-            if (currentChartType==='totalValue') { yData=snaps.map(s=>s.totalValue); name='总市值'; }
-            else if (currentChartType==='annualReturn') { yData=snaps.map(s=>s.annualReturn!=null?(s.annualReturn*100).toFixed(2):null); name='年化收益率(%)'; }
-            else { yData=snaps.map(s=>s.totalReturnRate!=null?(s.totalReturnRate*100).toFixed(2):null); name='总收益率(%)'; }
-            barChart.setOption({
-                tooltip:{trigger:'axis'}, xAxis:{data:dates,axisLabel:{rotate:25}}, yAxis:{name},
-                dataZoom:[{type:'slider',height:20,bottom:8}],
-                series:[{data:yData,type:'bar',color:'#3b5f7a'}]
-            });
-        }
-
-        // 操作函数
-        function saveGoal() { const v = parseFloat(document.getElementById('goalInput').value); if(v>0){app.goal=v;save();renderAll();showToast('目标金额已保存');} }
-        function saveTargetYear() { const v = parseInt(document.getElementById('targetYearInput').value); if(!isNaN(v)&&v>=2025){app.targetYear=v;updateMainTitle();save();renderAll();showToast('目标年份已设定为 '+v);} }
-        function addRecord() { const d=document.getElementById('recDate').value, a=parseFloat(document.getElementById('recAmount').value), n=document.getElementById('recNote').value.trim(); if(!d||isNaN(a)||a<=0)return; app.records.push({id:'r'+Date.now(),date:d,amount:a,note:n}); app.records.sort((a,b)=>new Date(b.date)-new Date(a.date)); save();renderAll(); document.getElementById('recAmount').value=''; document.getElementById('recNote').value=''; }
-        function deleteRecord(id) { app.records=app.records.filter(r=>r.id!==id); save();renderAll(); }
-        function clearRecords() { if(confirm('清空所有投入记录？')){app.records=[];save();renderAll();} }
-        function addAsset() {
-            const type=document.getElementById('assetType').value, code=document.getElementById('assetCode').value.trim(), amount=parseFloat(document.getElementById('assetAmount').value), cost=parseFloat(document.getElementById('assetCost').value), date=document.getElementById('assetDate').value;
-            if(!date||isNaN(amount)||amount<=0)return;
-            const asset={id:'a'+Date.now(),type,code:code||(type==='gold'?'au9999':''),amount,cost:type==='deposit'||type==='cash'?undefined:cost,rate:type==='deposit'?cost:undefined,date,currentPrice:type==='cash'?amount:(type==='deposit'?undefined:cost),name:''};
-            if(type==='deposit'){const m=parseInt(code)||12;const mat=new Date(date);mat.setMonth(mat.getMonth()+m);asset.maturityDate=mat.toISOString().split('T')[0];asset.matured=false;asset.rate=cost;}
-            app.assets.push(asset);save();renderAll();document.getElementById('assetCode').value='';document.getElementById('assetAmount').value='';document.getElementById('assetCost').value='';refreshQuotes(true);
-        }
-        function removeAsset(id) { app.assets=app.assets.filter(a=>a.id!==id);save();renderAll(); }
-        async function rolloverDeposit(id) {
-            const deposit=app.assets.find(a=>a.id===id); if(!deposit||!deposit.matured)return;
-            const old=deposit.maturityValue, na=parseFloat(prompt('转存金额（本息合计 '+formatMoney(old)+'）',old.toFixed(2))); if(isNaN(na)||na<=0)return;
-            const nr=parseFloat(prompt('新年化利率（%）',deposit.rate?.toFixed(2)||'2.5')); if(isNaN(nr))return;
-            const tm=parseInt(prompt('期限（月）','12')); if(isNaN(tm))return;
-            const diff=na-old;
-            app.assets=app.assets.filter(a=>a.id!==id);
-            const mat=new Date(todayStr); mat.setMonth(mat.getMonth()+tm);
-            app.assets.push({id:'d'+Date.now(),type:'deposit',code:'',amount:na,rate:nr,date:todayStr,maturityDate:mat.toISOString().split('T')[0],matured:false,name:'定期存款'});
-            if(diff>0.01) app.records.push({id:'r'+Date.now(),date:todayStr,amount:diff,note:'存款转存追加投入'});
-            else if(diff<-0.01) { const cash=app.assets.find(a=>a.type==='cash'); if(cash) cash.amount+=Math.abs(diff); else app.assets.push({id:'c'+Date.now(),type:'cash',code:'000198',amount:Math.abs(diff),date:todayStr,currentPrice:Math.abs(diff),name:'余额宝'}); }
-            save();renderAll();showToast('✅ 转存完成');
-        }
-        function exportToExcel() {
-            const wb = XLSX.utils.book_new();
-            const ad=[['类型','代码/名称','数量/金额','成本/利率','现价','市值','状态']];
-            app.assets.forEach(a=>{ let mkt=a.type==='deposit'?(a.matured?a.maturityValue:a.amount):(a.type==='cash'?(a.currentPrice||a.amount):(a.currentPrice||a.cost)*(a.amount||0)); let st=a.type==='deposit'?(a.matured?'已到期':'存续中'):''; ad.push([a.type,a.name||a.code||'',a.amount||'',a.type==='deposit'?(a.rate+'%'):(a.cost||''),a.currentPrice||'',mkt,st]); });
-            XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ad),'持仓明细');
-            const rd=[['日期','金额','备注']]; app.records.forEach(r=>rd.push([r.date,r.amount,r.note||'']));
-            XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rd),'投入记录');
-            if(app.snapshots.length){ const sd=[['日期','总市值','年化收益率','总收益率','总投入']]; app.snapshots.forEach(s=>sd.push([s.date,s.totalValue,s.annualReturn!=null?(s.annualReturn*100).toFixed(2)+'%':'',s.totalReturnRate!=null?(s.totalReturnRate*100).toFixed(2)+'%':'',s.totalInvest])); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sd),'历史快照'); }
-            XLSX.writeFile(wb,'投资记录_'+todayStr+'.xlsx');
-            showToast('📥 Excel已导出');
-        }
-        function showToast(msg) { const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.getElementById('toastContainer').appendChild(t); setTimeout(()=>t.remove(),2600); }
-
-        document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click',function(){
-            document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-            this.classList.add('active'); currentChartType=this.dataset.type; renderCharts();
-        }));
-
-        window.saveGoal=saveGoal; window.saveTargetYear=saveTargetYear; window.addRecord=addRecord; window.deleteRecord=deleteRecord;
-        window.clearRecords=clearRecords; window.addAsset=addAsset; window.removeAsset=removeAsset; window.rolloverDeposit=rolloverDeposit;
-        window.exportToExcel=exportToExcel; window.manualRefresh=manualRefresh;
-        window.onload = () => { setTimeout(() => checkAutoUpdate(), 2000); };
-    })();
+    };
 </script>
 </body>
 </html>
+
