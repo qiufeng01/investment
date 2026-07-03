@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>个人投资计划</title>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <!-- SheetJS for Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --primary: #1e3b5c;
+            --primary-light: #2b557a;
+            --accent: #b98b5f;
+            --positive: #2d7d46;
+            --negative: #c64545;
+            --text: #1e2a36;
+            --text-secondary: #4a5b6b;
+            --text-muted: #7c8b98;
+            --border: #dce2e8;
+            --border-light: #eef1f5;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: var(--font); line-height: 1.5;
+            padding: 20px 16px 40px; -webkit-font-smoothing: antialiased; min-height: 100vh;
+        }
+        .container { max-width: 1060px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
+        .card {
+            background: var(--card-bg); border-radius: var(--radius);
+            padding: 20px 22px; box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+        }
+        .card-header {
+            display:flex; align-items:center; justify-content:space-between;
+            flex-wrap:wrap; gap:12px; margin-bottom:14px;
+        }
+        .card-title { font-size:16px; font-weight:600; color:var(--primary); display:flex; align-items:center; gap:6px; }
+        .top-bar {
+            display:flex; justify-content:space-between; align-items:center;
+            font-size:14px; background: var(--card-bg); border-radius: var(--radius-sm);
+            padding: 10px 18px; box-shadow: var(--shadow); margin-bottom:4px;
+        }
+        .top-bar .main-title { font-weight:600; color:var(--primary); }
+        .sync-badge {
+            background:#e9f0f7; color:var(--primary); padding:2px 10px;
+            border-radius:20px; font-weight:500; font-size:12px;
+        }
+        .btn {
+            display:inline-flex; align-items:center; gap:4px;
+            padding:8px 14px; border:none; border-radius:6px; font-size:13px;
+            font-weight:500; cursor:pointer; background:#f0f3f7; color:var(--text);
+            transition: background 0.15s; white-space:nowrap; border:1px solid transparent;
+        }
+        .btn:hover { background:#e4e9f0; }
+        .btn-primary { background:var(--primary); color:#fff; border:1px solid var(--primary); }
+        .btn-primary:hover { background:var(--primary-light); }
+        .btn-accent { background:#f5efe8; color:#5e3e1c; border:1px solid #dccbb8; }
+        .btn-accent:hover { background:#efe2d3; }
+        .btn-sm { padding:5px 10px; font-size:12px; }
+        .btn-xs { padding:3px 8px; font-size:11px; border-radius:4px; }
+        .btn-outline { background:#fff; border:1px solid var(--border); color:var(--text); }
+        .btn-outline:hover { background:#f9fafb; }
+        .btn-danger { background:#fff; color:var(--negative); border:1px solid #f1cfcf; }
+        .btn-danger:hover { background:#fef5f5; }
+        .btn-edit { background:#f0f5fb; color:var(--primary-light); border:1px solid #cbddec; }
+        input, select {
+            padding:9px 12px; border:1px solid var(--border); border-radius:6px;
+            font-size:14px; background:#fff; font-family:var(--font-mono);
+            transition:border-color 0.15s; width:140px;
+        }
+        input:focus, select:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(27,59,92,0.06); }
+        .input-group { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        .stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:6px; }
+        .stat-item {
+            background:#f9fafc; border-radius:8px; padding:14px 16px;
+            border:1px solid var(--border-light);
+        }
+        .stat-label { font-size:11px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; }
+        .stat-value { font-size:20px; font-weight:600; font-family:var(--font-mono); margin-top:4px; color:var(--text); }
+        .stat-value.positive { color:var(--positive); }
+        .stat-value.negative { color:var(--negative); }
+        .progress-bar { height:8px; background:#e9ecf1; border-radius:10px; margin-top:8px; overflow:hidden; }
+        .progress-fill { height:100%; border-radius:10px; background:#3b5f7a; transition:width 0.4s; }
+        .progress-fill.over { background:#2d7d46; }
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th {
+            text-align:left; padding:10px 12px; background:#f8fafb;
+            font-weight:500; color:var(--text-secondary); border-bottom:1px solid var(--border);
+            font-size:11px; letter-spacing:0.3px;
+        }
+        td { padding:10px 12px; border-bottom:1px solid var(--border-light); vertical-align:middle; }
+        .table-wrap { overflow-x:auto; border-radius:8px; border:1px solid var(--border-light); }
+        .chart-wrap { width:100%; height:320px; margin-top:8px; }
+        .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+        .tab {
+            padding:6px 14px; background:#f2f4f7; border-radius:20px;
+            font-size:12px; cursor:pointer; border:none; color:var(--text-secondary);
+        }
+        .tab.active { background:var(--primary); color:#fff; }
+        .toast-wrap { position:fixed; top:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:6px; }
+        .toast {
+            background:#1e293b; color:#fff; padding:10px 16px; border-radius:8px;
+            font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,0.1); animation:slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        .muted { color:var(--text-muted); font-size:12px; }
+        hr { border:0; border-top:1px solid var(--border-light); margin:10px 0; }
+        @media (max-width:640px) {
+            body { padding:10px 8px 30px; }
+            .card { padding:14px; }
+            input { width:100%; }
+            .stat-grid { grid-template-columns:1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部标题栏（动态标题） -->
+    <div class="top-bar">
+        <span class="main-title" id="mainTitle">📊 个人投资记录</span>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="btn btn-outline btn-xs" onclick="exportToExcel()">📥 导出Excel</button>
+            <span class="sync-badge" id="syncStatus">⏳ 连接中...</span>
+        </div>
+    </div>
+
+    <!-- 目标卡片（金额 + 年份） -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">🎯 投资目标</span>
+        </div>
+        <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
+            <span style="font-size:14px;">目标金额 ¥</span>
+            <input type="number" id="goalInput" placeholder="金额" step="1000" style="width:130px;">
+            <button class="btn btn-primary btn-sm" onclick="saveGoal()">保存金额</button>
+            <span style="margin-left:12px; font-size:14px;">目标年份</span>
+            <input type="number" id="targetYearInput" placeholder="例如2045" step="1" min="2025" style="width:100px;">
+            <button class="btn btn-accent btn-sm" onclick="saveTargetYear()">设定年份</button>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-item">
+                <div class="stat-label">目标完成率</div>
+                <div class="stat-value" id="goalPercent">--</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">当前总市值</div>
+                <div class="stat-value" id="totalMarketValue">--</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">总投入</div>
+                <div class="stat-value" id="totalInvestDisplay">--</div>
+            </div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="goalProgress" style="width:0%"></div>
+        </div>
+        <div class="muted" style="margin-top:6px;" id="goalMessage"></div>
+    </div>
+
+    <!-- 收益率卡片 -->
+    <div class="card">
+        <div class="stat-grid">
+            <div class="stat-item">
+                <div class="stat-label">总收益率</div>
+                <div class="stat-value" id="totalReturn">--</div>
+                <div class="muted" id="totalReturnAmount"></div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">年化收益率</div>
+                <div class="stat-value" id="annualReturn">--</div>
+                <div class="muted" id="annualNote"></div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">今日更新状态</div>
+                <div class="stat-value" style="font-size:15px;" id="updateStatus">未更新</div>
+                <button class="btn btn-outline btn-xs" style="margin-top:6px;" onclick="manualRefresh()">🔄 立即刷新</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 持仓管理 -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">📦 持仓与资产</span>
+            <span class="muted">股票 · 基金 · 黄金 · 存款 · 现金</span>
+        </div>
+        <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
+            <select id="assetType" style="width:110px;">
+                <option value="stock">股票</option>
+                <option value="fund">基金</option>
+                <option value="gold">黄金现货</option>
+                <option value="deposit">银行存款</option>
+                <option value="cash">现金(余额宝)</option>
+            </select>
+            <input type="text" id="assetCode" placeholder="代码 (sh600000)" style="width:130px;">
+            <input type="number" id="assetAmount" placeholder="数量/金额" step="0.01" style="width:120px;">
+            <input type="number" id="assetCost" placeholder="成本价/利率" step="0.001" style="width:120px;">
+            <input type="date" id="assetDate" style="width:130px;">
+            <button class="btn btn-primary btn-sm" onclick="addAsset()">添加</button>
+        </div>
+        <div class="table-wrap">
+            <table id="assetTable">
+                <thead><tr><th>类型</th><th>代码/名称</th><th>数量</th><th>成本</th><th>现价</th><th>市值</th><th>盈亏/状态</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 饼图 -->
+    <div class="card">
+        <div class="card-title">🥧 资产分布</div>
+        <div id="pieChart" class="chart-wrap"></div>
+    </div>
+
+    <!-- 历史柱状图 -->
+    <div class="card">
+        <div class="card-title">📈 历史走势</div>
+        <div class="tabs" id="chartTabs">
+            <button class="tab active" data-type="totalValue">总市值</button>
+            <button class="tab" data-type="annualReturn">年化收益率</button>
+            <button class="tab" data-type="totalReturnRate">总收益率</button>
+        </div>
+        <div id="barChart" class="chart-wrap" style="height:360px;"></div>
+    </div>
+
+    <!-- 投资记录 -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">📋 投入记录</span>
+            <button class="btn btn-outline btn-xs" onclick="clearRecords()">清空</button>
+        </div>
+        <div class="input-group" style="margin-bottom:10px;">
+            <input type="date" id="recDate" style="width:130px;">
+            <input type="number" id="recAmount" placeholder="金额" step="0.01" style="width:120px;">
+            <input type="text" id="recNote" placeholder="备注" style="width:140px;">
+            <button class="btn btn-primary btn-sm" onclick="addRecord()">添加</button>
+        </div>
+        <div class="table-wrap">
+            <table id="recordTable">
+                <thead><tr><th>日期</th><th>金额</th><th>天数</th><th>备注</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <div style="text-align:center; font-size:12px; color:var(--text-muted);">
+        每日00:00自动更新 · 手动刷新冷却30分钟 · 数据云端同步
+    </div>
+</div>
+<div class="toast-wrap" id="toastContainer"></div>
+
+<script>
+    (function() {
+        // ---------- Firebase 配置（请替换为您的项目）----------
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJ2WrpwVtKJTbNUtsMfcwTSv51WWXCoIw",
+  authDomain: "my-investment-88cf7.firebaseapp.com",
+  projectId: "my-investment-88cf7",
+  storageBucket: "my-investment-88cf7.firebasestorage.app",
+  messagingSenderId: "655623839931",
+  appId: "1:655623839931:web:662818de4ff6c73a8c099e"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // ---------- 全局状态 ----------
+        let app = {
+            goal: 100000,
+            targetYear: null,            // 目标年份（新增）
+            manualMarketValue: null,
+            records: [],
+            assets: [],
+            snapshots: [],
+            lastUpdateDate: null,
+            lastManualRefresh: null,
+        };
+        let userDocRef = null;
+        let pieChart, barChart;
+        let currentChartType = 'totalValue';
+
+        // 常用日期
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('recDate').value = todayStr;
+        document.getElementById('assetDate').value = todayStr;
+
+        // ---------- 认证与监听 ----------
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('syncStatus').textContent = '☁️ 已同步';
+                userDocRef = db.collection('users').doc(user.uid);
+                userDocRef.onSnapshot(doc => {
+                    if (doc.exists) {
+                        const d = doc.data();
+                        app.goal = d.goal || 100000;
+                        app.targetYear = d.targetYear || null;
+                        app.manualMarketValue = d.manualMarketValue ?? null;
+                        app.records = d.records || [];
+                        app.assets = d.assets || [];
+                        app.snapshots = d.snapshots || [];
+                        app.lastUpdateDate = d.lastUpdateDate || null;
+                        app.lastManualRefresh = d.lastManualRefresh || null;
+                        app.records.sort((a,b)=> new Date(b.date) - new Date(a.date));
+                    } else {
+                        userDocRef.set({
+                            goal: 100000, targetYear: null,
+                            manualMarketValue: null, records: [],
+                            assets: [], snapshots: [],
+                            lastUpdateDate: null, lastManualRefresh: null
+                        });
+                    }
+                    updateMainTitle();
+                    renderAll();
+                    checkAutoUpdate();
+                });
+            } else {
+                auth.signInAnonymously().catch(console.error);
+            }
+        });
+
+        function save() {
+            if (!userDocRef) return;
+            userDocRef.set({
+                goal: app.goal,
+                targetYear: app.targetYear,
+                manualMarketValue: app.manualMarketValue,
+                records: app.records,
+                assets: app.assets,
+                snapshots: app.snapshots,
+                lastUpdateDate: app.lastUpdateDate,
+                lastManualRefresh: app.lastManualRefresh
+            }, { merge: true }).catch(e => console.warn('保存失败', e));
+        }
+
+        // ---------- 动态标题 ----------
+        function updateMainTitle() {
+            const el = document.getElementById('mainTitle');
+            if (app.targetYear) {
+                el.textContent = '📊 ' + app.targetYear + '投资计划';
+            } else {
+                el.textContent = '📊 个人投资记录';
+            }
+        }
+
+        // ---------- 工具函数 ----------
+        function formatMoney(v) {
+            if (v === null || v === undefined || isNaN(v)) return '--';
+            return '¥' + Math.abs(v).toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
+        function formatPercent(v) {
+            if (v === null || v === undefined || isNaN(v)) return '--';
+            return (v>=0?'+':'') + (v*100).toFixed(2) + '%';
+        }
+        function daysBetween(d1, d2) {
+            return Math.max(0, Math.floor((new Date(d2) - new Date(d1)) / 86400000));
+        }
+
+        // ---------- 行情接口 ----------
+        function fetchStock(code, cb) {
+            const s = document.createElement('script');
+            const name = 'cb' + Date.now();
+            window[name] = data => { cb(data); delete window[name]; s.remove(); };
+            s.src = `https://hq.sinajs.cn/list=${code}&callback=${name}`;
+            s.onerror = () => cb(null);
+            document.body.appendChild(s);
+        }
+        function fetchFund(code, cb) {
+            const s = document.createElement('script');
+            const name = 'fcb' + Date.now();
+            window[name] = data => { cb(data); delete window[name]; s.remove(); };
+            s.src = `https://fundgz.1234567.com.cn/js/${code}.js?callback=${name}`;
+            s.onerror = () => cb(null);
+            document.body.appendChild(s);
+        }
+        function parseStock(raw) {
+            if (!raw) return null;
+            const m = raw.match(/"([^"]+)"/);
+            if (!m) return null;
+            const f = m[1].split(',');
+            return { name: f[0], price: parseFloat(f[3]), change: parseFloat(f[3])/parseFloat(f[2])-1 };
+        }
+        function parseFund(data) {
+            if (!data || !data.fundcode) return null;
+            const price = parseFloat(data.gsz || data.dwjz);
+            return { name: data.name, price, change: parseFloat(data.gszzl || 0)/100 };
+        }
+        function fetchGold(cb) {
+            fetchStock('au9999', raw => {
+                const info = parseStock(raw);
+                cb(info ? {...info, name:'黄金现货Au99.99'} : null);
+            });
+        }
+
+        // ---------- 更新行情 ----------
+        async function refreshQuotes(force = false) {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            if (!force && app.lastUpdateDate === today) return;
+            if (!force && now.getHours() !== 0) {
+                scheduleMidnightUpdate();
+                return;
+            }
+            for (let asset of app.assets) {
+                if (asset.type === 'stock' || asset.type === 'fund') {
+                    await new Promise(resolve => {
+                        const fetcher = asset.type === 'stock' ? fetchStock : fetchFund;
+                        fetcher(asset.code, info => {
+                            if (info) { asset.currentPrice = info.price; asset.name = info.name; }
+                            resolve();
+                        });
+                    });
+                } else if (asset.type === 'gold') {
+                    await new Promise(resolve => {
+                        fetchGold(info => {
+                            if (info) { asset.currentPrice = info.price; asset.name = info.name; }
+                            resolve();
+                        });
+                    });
+                } else if (asset.type === 'cash') {
+                    const code = asset.code || '000198';
+                    await new Promise(resolve => {
+                        fetchFund(code, data => {
+                            const info = parseFund(data);
+                            if (info && info.price) {
+                                asset.yieldRate = info.price / 10000;
+                                asset.currentPrice = asset.amount + calcCashProfit(asset);
+                            }
+                            resolve();
+                        });
+                    });
+                }
+            }
+            app.lastUpdateDate = today;
+            checkDeposits();
+            saveSnapshot();
+            save();
+            renderAll();
+            showToast('✅ 行情已更新');
+        }
+
+        function calcCashProfit(asset) {
+            const days = daysBetween(asset.date || todayStr, todayStr);
+            const rate = asset.yieldRate || 0.0001;
+            return asset.amount * rate * days;
+        }
+
+        function checkDeposits() {
+            const today = new Date(todayStr);
+            app.assets.forEach(a => {
+                if (a.type === 'deposit' && a.maturityDate && new Date(a.maturityDate) <= today && !a.matured) {
+                    a.matured = true;
+                    const interest = a.amount * (a.rate/100) * (daysBetween(a.date, a.maturityDate)/365);
+                    a.maturityValue = a.amount + interest;
+                }
+            });
+        }
+
+        function saveSnapshot() {
+            const m = computeMetrics();
+            const last = app.snapshots[app.snapshots.length-1];
+            if (!last || last.date !== todayStr) {
+                app.snapshots.push({
+                    date: todayStr,
+                    totalValue: m.totalMarketValue || m.totalInvest,
+                    annualReturn: m.annualReturn,
+                    totalReturnRate: m.totalReturn,
+                    totalInvest: m.totalInvest
+                });
+                if (app.snapshots.length > 400) app.snapshots.shift();
+            }
+        }
+
+        function scheduleMidnightUpdate() {
+            const now = new Date();
+            const target = new Date(now);
+            target.setHours(24,0,0,0); // 下一个0点
+            const ms = target - now;
+            setTimeout(() => refreshQuotes(true), ms);
+        }
+
+        function checkAutoUpdate() {
+            if (app.lastUpdateDate !== todayStr) {
+                const now = new Date();
+                if (now.getHours() === 0) refreshQuotes(true);
+                else scheduleMidnightUpdate();
+            }
+        }
+
+        async function manualRefresh() {
+            const now = Date.now();
+            if (app.lastManualRefresh && (now - app.lastManualRefresh) < 30*60*1000) {
+                showToast('⏳ 手动刷新需间隔30分钟', 'warning');
+                return;
+            }
+            app.lastManualRefresh = now;
+            save();
+            await refreshQuotes(true);
+            showToast('🔄 手动刷新完成');
+        }
+
+        // ---------- 计算指标 ----------
+        function computeMetrics() {
+            const totalInvest = app.records.reduce((s,r) => s + r.amount, 0);
+            let marketValue = app.manualMarketValue;
+            if (marketValue === null && app.assets.length > 0) {
+                marketValue = app.assets.reduce((s, a) => {
+                    if (a.type === 'deposit') return s + (a.matured ? a.maturityValue : a.amount);
+                    if (a.type === 'cash') return s + (a.currentPrice || a.amount);
+                    return s + (a.currentPrice || a.cost) * (a.amount || 0);
+                }, 0);
+            }
+            const goal = app.goal || 1;
+            let weightedDays = 0, totalAmt = 0;
+            const now = new Date(todayStr);
+            app.records.forEach(r => {
+                const d = new Date(r.date);
+                const days = Math.max(0, Math.floor((now - d)/86400000));
+                weightedDays += r.amount * days;
+                totalAmt += r.amount;
+            });
+            const avgYears = totalAmt > 0 ? (weightedDays/totalAmt)/365.25 : 0;
+            let totalReturn = null, annualReturn = null;
+            if (marketValue !== null && totalInvest > 0) {
+                totalReturn = (marketValue - totalInvest) / totalInvest;
+                if (avgYears > 0.001) annualReturn = Math.pow(marketValue/totalInvest, 1/avgYears) - 1;
+                else if (totalInvest > 0) annualReturn = totalReturn;
+            }
+            return {
+                totalInvest, totalMarketValue: marketValue,
+                totalReturn, annualReturn,
+                goalComplete: marketValue !== null ? marketValue/goal : totalInvest/goal,
+                avgYears
+            };
+        }
+
+        // ---------- 渲染 ----------
+        function renderAll() {
+            const m = computeMetrics();
+            document.getElementById('totalMarketValue').textContent = m.totalMarketValue !== null ? formatMoney(m.totalMarketValue) : '--';
+            document.getElementById('totalInvestDisplay').textContent = formatMoney(m.totalInvest);
+            document.getElementById('goalPercent').textContent = m.totalMarketValue !== null ? (m.goalComplete*100).toFixed(1)+'%' : '--';
+            document.getElementById('goalProgress').style.width = Math.min(m.goalComplete*100, 100) + '%';
+            document.getElementById('goalProgress').className = 'progress-fill' + (m.goalComplete >= 1 ? ' over' : '');
+            document.getElementById('goalMessage').textContent = m.totalMarketValue !== null ? (m.goalComplete>=1 ? '🎉 目标已达成' : '距离目标还差 ' + formatMoney(app.goal - m.totalMarketValue)) : '';
+            document.getElementById('totalReturn').textContent = formatPercent(m.totalReturn);
+            document.getElementById('totalReturnAmount').textContent = m.totalReturn !== null ? '盈亏 ' + formatMoney(m.totalMarketValue - m.totalInvest) : '';
+            document.getElementById('annualReturn').textContent = formatPercent(m.annualReturn);
+            document.getElementById('annualNote').textContent = m.avgYears > 0 ? '加权投资约' + (m.avgYears*12).toFixed(1)+'个月' : '';
+            document.getElementById('updateStatus').textContent = app.lastUpdateDate === todayStr ? '今日已更新' : '待更新';
+            document.getElementById('goalInput').value = app.goal;
+            document.getElementById('targetYearInput').value = app.targetYear || '';
+            renderAssetTable();
+            renderRecordTable();
+            renderCharts();
+        }
+
+        function renderAssetTable() {
+            const tbody = document.querySelector('#assetTable tbody');
+            if (!app.assets.length) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产</td></tr>';
+                return;
+            }
+            tbody.innerHTML = app.assets.map(a => {
+                let price = a.currentPrice || a.cost || 0;
+                let market = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) :
+                             (a.type==='cash' ? (a.currentPrice || a.amount) : price * (a.amount||0));
+                let profit = '';
+                if (a.type === 'deposit') {
+                    profit = a.matured ? '已到期' : '存续中';
+                } else if (a.type === 'cash') {
+                    profit = '收益约' + formatMoney(market - a.amount);
+                } else {
+                    const p = (price - a.cost) * a.amount;
+                    profit = `<span class="${p>=0?'positive':'negative'}">${formatMoney(p)}</span>`;
+                }
+                let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
+                if (a.type === 'deposit' && a.matured) {
+                    actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')">转存</button>`;
+                }
+                return `<tr>
+                    <td>${a.type==='stock'?'股票':a.type==='fund'?'基金':a.type==='gold'?'黄金':a.type==='deposit'?'存款':'现金'}</td>
+                    <td>${a.name || a.code || '—'}</td>
+                    <td>${a.amount||''}</td>
+                    <td>${a.cost ? formatMoney(a.cost) : (a.rate+'%')}</td>
+                    <td>${formatMoney(price)}</td>
+                    <td>${formatMoney(market)}</td>
+                    <td>${profit}</td>
+                    <td>${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderRecordTable() {
+            const tbody = document.querySelector('#recordTable tbody');
+            if (!app.records.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">暂无投入记录</td></tr>';
+                return;
+            }
+            const now = new Date(todayStr);
+            tbody.innerHTML = app.records.map(r => {
+                const days = daysBetween(r.date, todayStr);
+                return `<tr>
+                    <td>${r.date}</td><td>${formatMoney(r.amount)}</td><td>${days}天</td>
+                    <td>${r.note||''}</td>
+                    <td><button class="btn btn-xs btn-outline" onclick="deleteRecord('${r.id}')">删除</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderCharts() {
+            if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
+            if (!barChart) barChart = echarts.init(document.getElementById('barChart'));
+            const assetsWithValue = app.assets.filter(a => {
+                let mkt = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) :
+                          (a.type==='cash' ? (a.currentPrice||a.amount) : (a.currentPrice||a.cost)*(a.amount||0));
+                return mkt > 0;
+            });
+            pieChart.setOption({
+                tooltip: { trigger:'item' },
+                series: [{
+                    type:'pie', radius:['45%','70%'],
+                    label:{ show:true, formatter:'{b}: {d}%' },
+                    data: assetsWithValue.map(a => ({
+                        name: a.name || a.code || a.type,
+                        value: a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) :
+                               (a.type==='cash' ? (a.currentPrice||a.amount) : (a.currentPrice||a.cost)*(a.amount||0))
+                    }))
+                }]
+            });
+            const snaps = app.snapshots;
+            if (!snaps.length) { barChart.setOption({ title:{ text:'暂无历史数据' } }); return; }
+            const dates = snaps.map(s => s.date);
+            let yData, name;
+            if (currentChartType === 'totalValue')      { yData = snaps.map(s=>s.totalValue); name='总市值'; }
+            else if (currentChartType === 'annualReturn') { yData = snaps.map(s=>s.annualReturn!==null ? (s.annualReturn*100).toFixed(2) : null); name='年化收益率(%)'; }
+            else { yData = snaps.map(s=>s.totalReturnRate!==null ? (s.totalReturnRate*100).toFixed(2) : null); name='总收益率(%)'; }
+            barChart.setOption({
+                tooltip:{ trigger:'axis' },
+                xAxis:{ data:dates, axisLabel:{rotate:25} },
+                yAxis:{ name },
+                dataZoom:[{ type:'slider', height:20, bottom:8 }],
+                series:[{ data:yData, type:'bar', color:'#3b5f7a' }]
+            });
+        }
+
+        // ---------- 用户操作 ----------
+        function saveGoal() {
+            const v = parseFloat(document.getElementById('goalInput').value);
+            if (v > 0) { app.goal = v; save(); renderAll(); showToast('目标金额已保存'); }
+        }
+
+        function saveTargetYear() {
+            const input = document.getElementById('targetYearInput');
+            const val = parseInt(input.value);
+            if (isNaN(val) || val < 2025) { showToast('请输入有效年份（≥2025）', 'warning'); return; }
+            app.targetYear = val;
+            updateMainTitle();
+            save();
+            renderAll();
+            showToast('目标年份已设定为 ' + val);
+        }
+
+        function addRecord() {
+            const date = document.getElementById('recDate').value;
+            const amt = parseFloat(document.getElementById('recAmount').value);
+            const note = document.getElementById('recNote').value.trim();
+            if (!date || isNaN(amt) || amt <= 0) return;
+            app.records.push({ id:'r'+Date.now(), date, amount:amt, note });
+            app.records.sort((a,b)=> new Date(b.date) - new Date(a.date));
+            save(); renderAll();
+            document.getElementById('recAmount').value = '';
+            document.getElementById('recNote').value = '';
+        }
+
+        function deleteRecord(id) { app.records = app.records.filter(r=>r.id!==id); save(); renderAll(); }
+        function clearRecords() { if (confirm('清空所有投入记录？')) { app.records = []; save(); renderAll(); } }
+
+        function addAsset() {
+            const type = document.getElementById('assetType').value;
+            const code = document.getElementById('assetCode').value.trim();
+            const amount = parseFloat(document.getElementById('assetAmount').value);
+            const cost = parseFloat(document.getElementById('assetCost').value);
+            const date = document.getElementById('assetDate').value;
+            if (!date || isNaN(amount) || amount <= 0) return;
+            const asset = {
+                id: 'a'+Date.now(), type,
+                code: code || (type==='gold'?'au9999':''),
+                amount,
+                cost: type==='deposit'||type==='cash' ? undefined : cost,
+                rate: type==='deposit' ? cost : undefined,
+                date,
+                currentPrice: type==='cash' ? amount : (type==='deposit' ? undefined : cost),
+                name: '',
+            };
+            if (type === 'deposit') {
+                const termMonths = parseInt(code) || 12;
+                const mat = new Date(date);
+                mat.setMonth(mat.getMonth() + termMonths);
+                asset.maturityDate = mat.toISOString().split('T')[0];
+                asset.matured = false;
+                asset.rate = cost;
+            }
+            app.assets.push(asset);
+            save(); renderAll();
+            document.getElementById('assetCode').value = '';
+            document.getElementById('assetAmount').value = '';
+            document.getElementById('assetCost').value = '';
+            refreshQuotes(true);
+        }
+
+        function removeAsset(id) { app.assets = app.assets.filter(a=>a.id!==id); save(); renderAll(); }
+
+        async function rolloverDeposit(id) {
+            const deposit = app.assets.find(a=>a.id===id);
+            if (!deposit || !deposit.matured) return;
+            const oldValue = deposit.maturityValue;
+            const newAmount = parseFloat(prompt('输入转存金额（本息合计 '+formatMoney(oldValue)+'）', oldValue.toFixed(2)));
+            if (isNaN(newAmount) || newAmount <= 0) return;
+            const newRate = parseFloat(prompt('新年化利率（%）', deposit.rate?.toFixed(2) || '2.5'));
+            if (isNaN(newRate)) return;
+            const termMonths = parseInt(prompt('期限（月）', '12'));
+            if (isNaN(termMonths)) return;
+            const diff = newAmount - oldValue;
+            app.assets = app.assets.filter(a=>a.id!==id);
+            const newDep = {
+                id:'d'+Date.now(), type:'deposit', code:'', amount:newAmount,
+                rate:newRate, date:todayStr,
+                maturityDate: (()=>{ const d=new Date(todayStr); d.setMonth(d.getMonth()+termMonths); return d.toISOString().split('T')[0]; })(),
+                matured:false, name:'定期存款'
+            };
+            app.assets.push(newDep);
+            if (diff > 0.001) {
+                app.records.push({ id:'r'+Date.now(), date:todayStr, amount:diff, note:'存款转存追加投入' });
+            } else if (diff < -0.001) {
+                const cash = app.assets.find(a=>a.type==='cash');
+                if (cash) cash.amount += Math.abs(diff);
+                else app.assets.push({ id:'c'+Date.now(), type:'cash', code:'000198', amount:Math.abs(diff), date:todayStr, currentPrice:Math.abs(diff), name:'余额宝' });
+            }
+            save(); renderAll();
+            showToast('✅ 转存完成');
+        }
+
+        // ---------- 导出Excel ----------
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            // 持仓
+            const assetData = [['类型','代码/名称','数量/金额','成本/利率','现价','市值','状态']];
+            app.assets.forEach(a => {
+                let market = a.type==='deposit' ? (a.matured ? a.maturityValue : a.amount) :
+                             (a.type==='cash' ? (a.currentPrice||a.amount) : (a.currentPrice||a.cost)*(a.amount||0));
+                let status = a.type==='deposit' ? (a.matured?'已到期':'存续中') : '';
+                assetData.push([a.type, a.name||a.code||'', a.amount||'',
+                    a.type==='deposit'? (a.rate+'%') : (a.cost||''),
+                    a.currentPrice||'', market, status]);
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(assetData), '持仓明细');
+            // 投入记录
+            const recData = [['日期','金额','备注']];
+            app.records.forEach(r => recData.push([r.date, r.amount, r.note||'']));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recData), '投入记录');
+            // 快照
+            if (app.snapshots.length) {
+                const snapData = [['日期','总市值','年化收益率','总收益率','总投入']];
+                app.snapshots.forEach(s => snapData.push([
+                    s.date, s.totalValue,
+                    s.annualReturn!=null ? (s.annualReturn*100).toFixed(2)+'%' : '',
+                    s.totalReturnRate!=null ? (s.totalReturnRate*100).toFixed(2)+'%' : '',
+                    s.totalInvest
+                ]));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(snapData), '历史快照');
+            }
+            XLSX.writeFile(wb, '投资记录_' + todayStr + '.xlsx');
+            showToast('📥 Excel已导出');
+        }
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'toast'; t.textContent = msg;
+            document.getElementById('toastContainer').appendChild(t);
+            setTimeout(() => t.remove(), 2600);
+        }
+
+        // 图表切换
+        document.querySelectorAll('.tab').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentChartType = this.dataset.type;
+                renderCharts();
+            });
+        });
+
+        // 暴露全局函数
+        window.manualRefresh = manualRefresh;
+        window.saveGoal = saveGoal;
+        window.saveTargetYear = saveTargetYear;
+        window.addRecord = addRecord;
+        window.deleteRecord = deleteRecord;
+        window.clearRecords = clearRecords;
+        window.addAsset = addAsset;
+        window.removeAsset = removeAsset;
+        window.rolloverDeposit = rolloverDeposit;
+        window.exportToExcel = exportToExcel;
+
+        // 初始检查更新
+        window.onload = () => { setTimeout(() => checkAutoUpdate(), 2000); };
+    })();
+</script>
+</body>
+</html>
