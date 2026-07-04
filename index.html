@@ -359,89 +359,88 @@
             setTimeout(() => t.remove(), 2600);
         }
 
-        // ========== 行情接口 ==========
-        function fetchStock(code, cb) {
-            const name = 'cb_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
-            const script = document.createElement('script');
-            let timeout = setTimeout(() => {
-                if (window[name]) { delete window[name]; script.remove(); }
-                cb(null);
-            }, 8000);
-            window[name] = function(data) {
-                clearTimeout(timeout);
-                delete window[name];
-                script.remove();
-                cb(data);
-            };
-            script.src = `https://hq.sinajs.cn/list=${code}&callback=${name}`;
-            script.onerror = function() {
-                clearTimeout(timeout);
-                delete window[name];
-                script.remove();
-                cb(null);
-            };
-            document.body.appendChild(script);
-        }
-
-        function fetchFund(code, cb) {
-            const name = 'fcb_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
-            const script = document.createElement('script');
-            let timeout = setTimeout(() => {
-                if (window[name]) { delete window[name]; script.remove(); }
-                cb(null);
-            }, 8000);
-            window[name] = function(data) {
-                clearTimeout(timeout);
-                delete window[name];
-                script.remove();
-                cb(data);
-            };
-            script.src = `https://fundgz.1234567.com.cn/js/${code}.js?callback=${name}`;
-            script.onerror = function() {
-                clearTimeout(timeout);
-                delete window[name];
-                script.remove();
-                cb(null);
-            };
-            document.body.appendChild(script);
-        }
-
-        function fetchGold(cb) {
-            const name = 'gold_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
-            const script = document.createElement('script');
-            let timeout = setTimeout(() => {
-                if (window[name]) { delete window[name]; script.remove(); }
-                cb(null);
-            }, 8000);
-            window[name] = function(data) {
-                clearTimeout(timeout);
-                delete window[name];
-                script.remove();
-                if (data && typeof data === 'string' && data.includes('au9999')) {
-                    const match = data.match(/"([^"]+)"/);
-                    if (match) {
-                        const parts = match[1].split(',');
-                        if (parts.length >= 4) {
-                            const price = parseFloat(parts[3]);
-                            const name = parts[0] || '黄金现货';
-                            if (!isNaN(price) && price > 0) {
-                                cb({ name: name, price: price, change: 0 });
-                                return;
-                            }
-                        }
-                    }
+// ========== 新的行情接口（使用代理 + 腾讯财经） ==========
+async function fetchStock(code, cb) {
+    try {
+        // 腾讯股票接口：https://qt.gtimg.cn/q=sh600000
+        const url = `https://qt.gtimg.cn/q=${code}`;
+        const proxy = 'https://api.allorigins.win/raw?url=';
+        const resp = await fetch(proxy + encodeURIComponent(url));
+        const text = await resp.text();
+        // 解析返回数据，格式：v_sh600000="浦发银行~10.23~10.25~...";
+        const match = text.match(/="([^"]+)"/);
+        if (match) {
+            const parts = match[1].split('~');
+            if (parts.length >= 3) {
+                const name = parts[0] || code;
+                const price = parseFloat(parts[1]); // 当前价
+                const prevClose = parseFloat(parts[2]); // 昨收
+                if (!isNaN(price) && price > 0) {
+                    cb({ name, price, change: prevClose > 0 ? (price - prevClose)/prevClose : 0 });
+                    return;
                 }
-                cb(null);
-            };
-            script.src = `https://hq.sinajs.cn/list=au9999&callback=${name}`;
-            script.onerror = function() {
-                clearTimeout(timeout);
-                delete window[name];
-                script.remove();
-                cb(null);
-            };
-            document.body.appendChild(script);
+            }
         }
+        cb(null);
+    } catch (e) {
+        console.warn('获取股票失败:', code, e);
+        cb(null);
+    }
+}
+
+async function fetchFund(code, cb) {
+    try {
+        // 天天基金接口有时不稳定，改用腾讯的基金接口
+        const url = `https://qt.gtimg.cn/q=jj${code}`;
+        const proxy = 'https://api.allorigins.win/raw?url=';
+        const resp = await fetch(proxy + encodeURIComponent(url));
+        const text = await resp.text();
+        const match = text.match(/="([^"]+)"/);
+        if (match) {
+            const parts = match[1].split('~');
+            if (parts.length >= 3) {
+                const name = parts[0] || code;
+                const price = parseFloat(parts[1]); // 当前净值
+                const prevClose = parseFloat(parts[2]); // 昨日净值
+                if (!isNaN(price) && price > 0) {
+                    cb({ name, price, change: prevClose > 0 ? (price - prevClose)/prevClose : 0 });
+                    return;
+                }
+            }
+        }
+        cb(null);
+    } catch (e) {
+        console.warn('获取基金失败:', code, e);
+        cb(null);
+    }
+}
+
+async function fetchGold(cb) {
+    try {
+        // 黄金使用腾讯的 au9999
+        const url = `https://qt.gtimg.cn/q=au9999`;
+        const proxy = 'https://api.allorigins.win/raw?url=';
+        const resp = await fetch(proxy + encodeURIComponent(url));
+        const text = await resp.text();
+        const match = text.match(/="([^"]+)"/);
+        if (match) {
+            const parts = match[1].split('~');
+            if (parts.length >= 3) {
+                const name = parts[0] || '黄金现货';
+                const price = parseFloat(parts[1]); // 当前价
+                const prevClose = parseFloat(parts[2]); // 昨收
+                if (!isNaN(price) && price > 0) {
+                    cb({ name, price, change: prevClose > 0 ? (price - prevClose)/prevClose : 0 });
+                    return;
+                }
+            }
+        }
+        cb(null);
+    } catch (e) {
+        console.warn('获取黄金失败:', e);
+        cb(null);
+    }
+}
 
         function parseStock(raw) {
             if (!raw || typeof raw !== 'string') return null;
