@@ -182,7 +182,7 @@
         <div id="barChart" class="chart-wrap" style="height:360px;"></div>
     </div>
 
-    <div style="text-align:center; font-size:12px; color:var(--text-muted);">每日00:00自动更新 · 手动刷新冷却30分钟 · 数据云端同步</div>
+    <div style="text-align:center; font-size:12px; color:var(--text-muted);">每日00:00自动更新 · 手动刷新冷却1分钟 · 数据云端同步</div>
 </div>
 <div class="toast-wrap" id="toastContainer"></div>
 
@@ -616,8 +616,8 @@ async function fetchGold(cb) {
         }
 
         async function manualRefresh() {
-            if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 30*60*1000) {
-                showToast('⏳ 手动刷新需间隔30分钟');
+            if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 60*1000) {
+                showToast('⏳ 手动刷新需间隔1分钟');
                 return;
             }
             app.lastManualRefresh = Date.now();
