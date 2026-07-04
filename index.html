@@ -359,87 +359,50 @@
             setTimeout(() => t.remove(), 2600);
         }
 
-// ========== 新的行情接口（使用代理 + 腾讯财经） ==========
-async function fetchStock(code, cb) {
-    try {
-        // 腾讯股票接口：https://qt.gtimg.cn/q=sh600000
-        const url = `https://qt.gtimg.cn/q=${code}`;
-        const proxy = 'https://api.allorigins.win/raw?url=';
-        const resp = await fetch(proxy + encodeURIComponent(url));
-        const text = await resp.text();
-        // 解析返回数据，格式：v_sh600000="浦发银行~10.23~10.25~...";
-        const match = text.match(/="([^"]+)"/);
-        if (match) {
-            const parts = match[1].split('~');
-            if (parts.length >= 3) {
-                const name = parts[0] || code;
-                const price = parseFloat(parts[1]); // 当前价
-                const prevClose = parseFloat(parts[2]); // 昨收
-                if (!isNaN(price) && price > 0) {
-                    cb({ name, price, change: prevClose > 0 ? (price - prevClose)/prevClose : 0 });
-                    return;
+// ========== 腾讯财经 JSONP 接口（无需代理） ==========
+function fetchTencent(symbol, cb) {
+    const callbackName = 'tq_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+    const script = document.createElement('script');
+    let timeout = setTimeout(() => {
+        if (window[callbackName]) delete window[callbackName];
+        script.remove();
+        cb(null);
+    }, 8000);
+    window[callbackName] = function(data) {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        script.remove();
+        if (typeof data === 'string') {
+            const match = data.match(/="([^"]+)"/);
+            if (match) {
+                const parts = match[1].split('~');
+                if (parts.length >= 3) {
+                    const name = parts[0] || symbol;
+                    const price = parseFloat(parts[1]);
+                    const prevClose = parseFloat(parts[2]);
+                    if (!isNaN(price) && price > 0) {
+                        cb({ name, price, change: prevClose > 0 ? (price - prevClose) / prevClose : 0 });
+                        return;
+                    }
                 }
             }
         }
         cb(null);
-    } catch (e) {
-        console.warn('获取股票失败:', code, e);
-        cb(null);
-    }
+    };
+    script.src = `https://qt.gtimg.cn/q=${symbol}&_var=${callbackName}`;
+    document.body.appendChild(script);
 }
 
-async function fetchFund(code, cb) {
-    try {
-        // 天天基金接口有时不稳定，改用腾讯的基金接口
-        const url = `https://qt.gtimg.cn/q=jj${code}`;
-        const proxy = 'https://api.allorigins.win/raw?url=';
-        const resp = await fetch(proxy + encodeURIComponent(url));
-        const text = await resp.text();
-        const match = text.match(/="([^"]+)"/);
-        if (match) {
-            const parts = match[1].split('~');
-            if (parts.length >= 3) {
-                const name = parts[0] || code;
-                const price = parseFloat(parts[1]); // 当前净值
-                const prevClose = parseFloat(parts[2]); // 昨日净值
-                if (!isNaN(price) && price > 0) {
-                    cb({ name, price, change: prevClose > 0 ? (price - prevClose)/prevClose : 0 });
-                    return;
-                }
-            }
-        }
-        cb(null);
-    } catch (e) {
-        console.warn('获取基金失败:', code, e);
-        cb(null);
-    }
+function fetchStock(code, cb) {
+    fetchTencent(code, cb);   // 股票直接传代码，如 sh600000
 }
 
-async function fetchGold(cb) {
-    try {
-        // 黄金使用腾讯的 au9999
-        const url = `https://qt.gtimg.cn/q=au9999`;
-        const proxy = 'https://api.allorigins.win/raw?url=';
-        const resp = await fetch(proxy + encodeURIComponent(url));
-        const text = await resp.text();
-        const match = text.match(/="([^"]+)"/);
-        if (match) {
-            const parts = match[1].split('~');
-            if (parts.length >= 3) {
-                const name = parts[0] || '黄金现货';
-                const price = parseFloat(parts[1]); // 当前价
-                const prevClose = parseFloat(parts[2]); // 昨收
-                if (!isNaN(price) && price > 0) {
-                    cb({ name, price, change: prevClose > 0 ? (price - prevClose)/prevClose : 0 });
-                    return;
-                }
-            }
-        }
-        cb(null);
-    } catch (e) {
-        console.warn('获取黄金失败:', e);
-        cb(null);
-    }
+function fetchFund(code, cb) {
+    fetchTencent('jj' + code, cb); // 基金需加 jj 前缀，如 jj110011
+}
+
+function fetchGold(cb) {
+    fetchTencent('au9999', cb);
 }
 
         function parseStock(raw) {
