@@ -691,11 +691,14 @@
         if (a.type === 'deposit') profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
         else if (a.type === 'cash') profit = '收益约' + formatMoney(market - (a.amount || 0));
         else {
-            const p = (price - (a.cost || 0)) * (a.amount || 0);
-            const color = p >= 0 ? '#c64545' : '#2d7d46';
-            const sign = p >= 0 ? '' : '-';
-            profit = `<span style="color:${color};">${sign}${formatMoney(p)}</span>`;
-        }
+    const p = (price - (a.cost || 0)) * (a.amount || 0);
+    const color = p >= 0 ? '#c64545' : '#2d7d46';
+    // 手动格式化：保留两位小数，添加千位分隔符，负号显示
+    const absVal = Math.abs(p);
+    const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const sign = p >= 0 ? '' : '-';
+    profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
+}
         let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
         if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
             actions += `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
