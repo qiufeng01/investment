@@ -244,6 +244,95 @@
 (function() {
     'use strict';
 
+    // ---- 显示资产历史 ----
+function showAssetHistory(assetId) {
+    const asset = app.assets.find(a => a.id === assetId);
+    if (!asset) { showToast('资产不存在'); return; }
+    document.getElementById('historyTitle').textContent = `📊 ${asset.name || asset.code || '资产'} 历史`;
+    const container = document.getElementById('historyContent');
+    container.innerHTML = '';
+
+    const transactions = asset.transactions || [];
+    // 排序
+    const sorted = [...transactions].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+    // ---- 交易记录表格 ----
+    let tableHtml = '<h4 style="margin:10px 0;">📋 交易记录</h4><div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr><th>日期</th><th>类型</th><th>数量</th><th>价格</th><th>金额</th></tr></thead><tbody>';
+    if (sorted.length === 0) {
+        tableHtml += '<tr><td colspan="5" style="text-align:center;color:#999;">暂无交易记录</td></tr>';
+    } else {
+        sorted.forEach(t => {
+            const amount = t.type === 'add' ? t.qty * t.price : -t.qty * t.price;
+            tableHtml += `<tr><td>${t.date}</td><td>${t.type === 'add' ? '买入' : '卖出'}</td><td>${t.qty.toFixed(4)}</td><td>${formatMoney(t.price)}</td><td>${formatMoney(Math.abs(amount))}</td></tr>`;
+        });
+    }
+    tableHtml += '</tbody></table></div>';
+    container.innerHTML += tableHtml;
+
+    // ---- 收益折线图 ----
+    if (sorted.length > 0) {
+        const chartDiv = document.createElement('div');
+        chartDiv.style.width = '100%';
+        chartDiv.style.height = '320px';
+        chartDiv.style.marginTop = '20px';
+        container.appendChild(chartDiv);
+
+        // 计算每次交易后的总成本和市值（使用当前最新价格计算市值）
+        const dates = [];
+        const costData = [];
+        const marketData = [];
+        let totalCost = 0;
+        let totalQty = 0;
+        sorted.forEach(t => {
+            if (t.type === 'add') {
+                totalQty += t.qty;
+                totalCost += t.qty * t.price;
+            } else {
+                totalQty -= t.qty;
+                totalCost -= t.qty * t.price;
+            }
+            const marketValue = totalQty * (asset.currentPrice || 0);
+            dates.push(t.date);
+            costData.push(totalCost);
+            marketData.push(marketValue);
+        });
+        // 添加当前最新点（如果最后交易日期不是今天）
+        const lastDate = dates[dates.length-1];
+        if (lastDate !== todayStr) {
+            dates.push(todayStr);
+            costData.push(totalCost);
+            marketData.push(totalQty * (asset.currentPrice || 0));
+        }
+
+        const chart = echarts.init(chartDiv);
+        chart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['总成本', '市值'] },
+            xAxis: { type: 'category', data: dates, axisLabel: { rotate: 25 } },
+            yAxis: { type: 'value', name: '金额 (¥)' },
+            series: [
+                { name: '总成本', type: 'line', data: costData, color: '#000000', smooth: false },
+                { name: '市值', type: 'line', data: marketData, color: '#c64545', smooth: false }
+            ]
+        });
+        chart.resize();
+        // 存储图表实例以便销毁
+        chart._isHistoryChart = true;
+        // 当模态框关闭时销毁
+    }
+    document.getElementById('historyModal').style.display = 'block';
+}
+
+function closeHistory() {
+    document.getElementById('historyModal').style.display = 'none';
+    // 销毁图表实例
+    const charts = document.querySelectorAll('#historyContent div[style*="height"]');
+    charts.forEach(div => {
+        const inst = echarts.getInstanceByDom(div);
+        if (inst) inst.dispose();
+    });
+}
+
     // ========== Supabase 配置 ==========
     const SUPABASE_FUNCTION_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co/functions/v1/quote-proxy';
     const SUPABASE_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co';
@@ -622,94 +711,7 @@
         return { totalInvest, totalMarketValue: marketValue, totalReturn, annualReturn, goalComplete, avgYears };
     }
 
-    // ---- 显示资产历史 ----
-function showAssetHistory(assetId) {
-    const asset = app.assets.find(a => a.id === assetId);
-    if (!asset) { showToast('资产不存在'); return; }
-    document.getElementById('historyTitle').textContent = `📊 ${asset.name || asset.code || '资产'} 历史`;
-    const container = document.getElementById('historyContent');
-    container.innerHTML = '';
-
-    const transactions = asset.transactions || [];
-    // 排序
-    const sorted = [...transactions].sort((a,b) => new Date(a.date) - new Date(b.date));
-
-    // ---- 交易记录表格 ----
-    let tableHtml = '<h4 style="margin:10px 0;">📋 交易记录</h4><div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr><th>日期</th><th>类型</th><th>数量</th><th>价格</th><th>金额</th></tr></thead><tbody>';
-    if (sorted.length === 0) {
-        tableHtml += '<tr><td colspan="5" style="text-align:center;color:#999;">暂无交易记录</td></tr>';
-    } else {
-        sorted.forEach(t => {
-            const amount = t.type === 'add' ? t.qty * t.price : -t.qty * t.price;
-            tableHtml += `<tr><td>${t.date}</td><td>${t.type === 'add' ? '买入' : '卖出'}</td><td>${t.qty.toFixed(4)}</td><td>${formatMoney(t.price)}</td><td>${formatMoney(Math.abs(amount))}</td></tr>`;
-        });
-    }
-    tableHtml += '</tbody></table></div>';
-    container.innerHTML += tableHtml;
-
-    // ---- 收益折线图 ----
-    if (sorted.length > 0) {
-        const chartDiv = document.createElement('div');
-        chartDiv.style.width = '100%';
-        chartDiv.style.height = '320px';
-        chartDiv.style.marginTop = '20px';
-        container.appendChild(chartDiv);
-
-        // 计算每次交易后的总成本和市值（使用当前最新价格计算市值）
-        const dates = [];
-        const costData = [];
-        const marketData = [];
-        let totalCost = 0;
-        let totalQty = 0;
-        sorted.forEach(t => {
-            if (t.type === 'add') {
-                totalQty += t.qty;
-                totalCost += t.qty * t.price;
-            } else {
-                totalQty -= t.qty;
-                totalCost -= t.qty * t.price;
-            }
-            const marketValue = totalQty * (asset.currentPrice || 0);
-            dates.push(t.date);
-            costData.push(totalCost);
-            marketData.push(marketValue);
-        });
-        // 添加当前最新点（如果最后交易日期不是今天）
-        const lastDate = dates[dates.length-1];
-        if (lastDate !== todayStr) {
-            dates.push(todayStr);
-            costData.push(totalCost);
-            marketData.push(totalQty * (asset.currentPrice || 0));
-        }
-
-        const chart = echarts.init(chartDiv);
-        chart.setOption({
-            tooltip: { trigger: 'axis' },
-            legend: { data: ['总成本', '市值'] },
-            xAxis: { type: 'category', data: dates, axisLabel: { rotate: 25 } },
-            yAxis: { type: 'value', name: '金额 (¥)' },
-            series: [
-                { name: '总成本', type: 'line', data: costData, color: '#000000', smooth: false },
-                { name: '市值', type: 'line', data: marketData, color: '#c64545', smooth: false }
-            ]
-        });
-        chart.resize();
-        // 存储图表实例以便销毁
-        chart._isHistoryChart = true;
-        // 当模态框关闭时销毁
-    }
-    document.getElementById('historyModal').style.display = 'block';
-}
-
-function closeHistory() {
-    document.getElementById('historyModal').style.display = 'none';
-    // 销毁图表实例
-    const charts = document.querySelectorAll('#historyContent div[style*="height"]');
-    charts.forEach(div => {
-        const inst = echarts.getInstanceByDom(div);
-        if (inst) inst.dispose();
-    });
-}
+    
     
     // ========== 加减仓（数量+成本/卖出价） ==========
     async function adjustPosition(assetId, action) {
