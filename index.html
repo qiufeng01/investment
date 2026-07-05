@@ -692,8 +692,9 @@
         else if (a.type === 'cash') profit = '收益约' + formatMoney(market - (a.amount || 0));
         else {
             const p = (price - (a.cost || 0)) * (a.amount || 0);
-            const color = p >= 0 ? '#c64545' : '#2d7d46';   // 红绿
-            profit = `<span style="color:${color};">${formatMoney(p)}</span>`;
+            const color = p >= 0 ? '#c64545' : '#2d7d46';
+            const sign = p >= 0 ? '' : '-';
+            profit = `<span style="color:${color};">${sign}${formatMoney(p)}</span>`;
         }
         let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
         if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
