@@ -908,7 +908,6 @@ function updateSortArrows() {
         filtered.sort((a, b) => {
             let valA, valB;
             if (sortField === 'market') {
-                // 市值
                 valA = a.type === 'deposit' ? (a.matured ? (a.maturityValue || a.amount) : a.amount) :
                        (a.type === 'cash' ? (a.currentPrice || a.amount) :
                        (a.currentPrice || a.cost || 0) * (a.amount || 0));
@@ -916,15 +915,11 @@ function updateSortArrows() {
                        (b.type === 'cash' ? (b.currentPrice || b.amount) :
                        (b.currentPrice || b.cost || 0) * (b.amount || 0));
             } else if (sortField === 'profit') {
-                // 盈亏金额
                 valA = a.type === 'stock' || a.type === 'fund' || a.type === 'gold' ?
-                       ((a.currentPrice || a.cost || 0) - (a.cost || 0)) * (a.amount || 0) :
-                       (a.type === 'cash' ? 0 : 0); // 存款、现金盈亏视为0
+                       ((a.currentPrice || a.cost || 0) - (a.cost || 0)) * (a.amount || 0) : 0;
                 valB = b.type === 'stock' || b.type === 'fund' || b.type === 'gold' ?
-                       ((b.currentPrice || b.cost || 0) - (b.cost || 0)) * (b.amount || 0) :
-                       (b.type === 'cash' ? 0 : 0);
+                       ((b.currentPrice || b.cost || 0) - (b.cost || 0)) * (b.amount || 0) : 0;
             } else if (sortField === 'returnRate') {
-                // 收益率（百分比）
                 const costA = a.cost || 0;
                 const priceA = a.currentPrice || 0;
                 valA = (costA > 0 && priceA > 0) ? (priceA - costA) / costA : -Infinity;
@@ -935,7 +930,6 @@ function updateSortArrows() {
                 valA = 0;
                 valB = 0;
             }
-            // 处理 null/undefined
             if (valA === undefined || valA === null) valA = -Infinity;
             if (valB === undefined || valB === null) valB = -Infinity;
             if (sortAsc) return valA - valB;
@@ -981,6 +975,7 @@ function updateSortArrows() {
             }
         }
 
+        // ---- 名称列：股票/基金/黄金可点击（使用 data 属性，绑定事件委托） ----
         let displayName = '';
         if (a.type === 'stock' || a.type === 'fund') {
             const namePart = a.name || a.code || '';
@@ -990,14 +985,12 @@ function updateSortArrows() {
             displayName = a.name || a.code || '—';
         }
 
-        // 在生成 displayName 之后，添加：
-let nameDisplay = '';
-if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
-    nameDisplay = `<span style="cursor:pointer;color:var(--primary);" onclick="showAssetHistory('${a.id}')">${displayName}</span>`;
-} else {
-    nameDisplay = displayName;
-}
-// 然后在 <td> 中使用 nameDisplay
+        let nameDisplay = '';
+        if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
+            nameDisplay = `<span class="asset-name-link" data-asset-id="${a.id}" style="cursor:pointer;color:var(--primary);">${displayName}</span>`;
+        } else {
+            nameDisplay = displayName;
+        }
 
         let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
         if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
@@ -1010,7 +1003,7 @@ if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
         const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
         return `<tr>
             <td>${typeMap[a.type]||a.type}</td>
-            <td>${displayName}</td>
+            <td>${nameDisplay}</td>
             <td>${a.amount||''}</td>
             <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
             <td>${formatMoney(price)}</td>
@@ -1436,11 +1429,20 @@ function clearInputs() {
 
     // ========== 启动 ==========
     window.onload = async function() {
-        try {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) { await loadUserData(); } else { showLoginPrompt(); }
-        } catch (e) { console.error('启动失败:', e); showToast('⚠️ 初始化失败，请刷新重试'); }
-    };
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) { await loadUserData(); } else { showLoginPrompt(); }
+    } catch (e) { console.error('启动失败:', e); showToast('⚠️ 初始化失败，请刷新重试'); }
+
+    // ===== 新增：表格名称点击事件监听（点击股票/基金/黄金名称弹出历史） =====
+    document.getElementById('assetTable').addEventListener('click', function(e) {
+        const link = e.target.closest('.asset-name-link');
+        if (link) {
+            const assetId = link.dataset.assetId;
+            if (assetId) showAssetHistory(assetId);
+        }
+    });
+};
 
 })();
 </script>
