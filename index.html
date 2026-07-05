@@ -855,48 +855,124 @@
     }
 
     async function addAsset() {
-        const type = document.getElementById('assetType').value;
-        const code = document.getElementById('assetCode').value.trim();
-        const amount = parseFloat(document.getElementById('assetAmount').value);
-        const cost = parseFloat(document.getElementById('assetCost').value);
-        const date = document.getElementById('assetDate').value;
-        if (!date || isNaN(amount) || amount <= 0) { showToast('请填写完整信息（日期、数量）'); return; }
+    const type = document.getElementById('assetType').value;
+    let code = document.getElementById('assetCode').value.trim();
+    const amount = parseFloat(document.getElementById('assetAmount').value);
+    const cost = parseFloat(document.getElementById('assetCost').value);
+    const date = document.getElementById('assetDate').value;
+
+    if (!date || isNaN(amount) || amount <= 0) {
+        showToast('请填写完整信息（日期、数量）');
+        return;
+    }
+
+    // 根据类型设置默认代码
+    if (type === 'gold' && !code) code = 'au9999';
+    if (type === 'cash' && !code) code = '现金';
+
+    // ---- 存款：不合并，直接新增 ----
+    if (type === 'deposit') {
+        const months = parseInt(code) || 12;
+        const mat = new Date(date);
+        mat.setMonth(mat.getMonth() + months);
         const asset = {
-            id: 'a' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            type: type,
-            code: code || (type === 'gold' ? 'au9999' : ''),
+            id: 'd' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            type: 'deposit',
+            code: code || '',
             amount: amount,
             date: date,
-            currentPrice: (type === 'cash' ? amount : (type === 'deposit' ? undefined : cost || 0)),
-            name: '',
+            rate: cost || 2.5,
+            maturityDate: mat.toISOString().split('T')[0],
+            matured: false,
+            name: '定期存款'
         };
-        if (type === 'deposit') {
-            const months = parseInt(code) || 12;
-            const mat = new Date(date);
-            mat.setMonth(mat.getMonth() + months);
-            asset.maturityDate = mat.toISOString().split('T')[0];
-            asset.matured = false;
-            asset.rate = cost || 2.5;
-            asset.amount = amount;
-        } else if (type === 'cash') {
-            // 现金：纯现金，不计收益
-            asset.currentPrice = amount;
-            asset.amount = amount;
-            asset.code = code || '现金';
-        } else {
-            asset.cost = cost || 0;
-            asset.amount = amount;
-            if (cost === undefined || isNaN(cost)) { showToast('请填写成本价'); return; }
-        }
         app.assets.push(asset);
         await save();
         renderAll();
-        document.getElementById('assetCode').value = '';
-        document.getElementById('assetAmount').value = '';
-        document.getElementById('assetCost').value = '';
-        showToast('✅ 资产已添加，正在刷新行情...');
-        setTimeout(() => refreshQuotes(true), 500);
+        showToast('✅ 存款已添加');
+        clearInputs();
+        return;
     }
+
+    // ---- 现金：合并（按 code 或 type） ----
+    if (type === 'cash') {
+        // 查找已有现金
+        const existingIdx = app.assets.findIndex(a => a.type === 'cash' && a.code === code);
+        if (existingIdx !== -1) {
+            const old = app.assets[existingIdx];
+            old.amount += amount;
+            old.currentPrice = old.amount;
+            showToast(`✅ 现金已合并，当前余额 ${formatMoney(old.amount)}`);
+            await save();
+            renderAll();
+            clearInputs();
+            return;
+        } else {
+            // 新建现金
+            const asset = {
+                id: 'c' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                type: 'cash',
+                code: code,
+                amount: amount,
+                date: date,
+                currentPrice: amount,
+                name: '现金'
+            };
+            app.assets.push(asset);
+        }
+    } else {
+        // ---- 股票 / 基金 / 黄金：合并（按 type + code） ----
+        if (cost === undefined || isNaN(cost) || cost <= 0) {
+            showToast('请填写有效的成本价');
+            return;
+        }
+        const existingIdx = app.assets.findIndex(a => a.type === type && a.code === code);
+        if (existingIdx !== -1) {
+            const old = app.assets[existingIdx];
+            const oldQty = old.amount || 0;
+            const oldCost = old.cost || 0;
+            const newQty = oldQty + amount;
+            const newCost = (oldQty * oldCost + amount * cost) / newQty;
+            old.amount = newQty;
+            old.cost = newCost;
+            // 保留原来的 name、currentPrice（刷新后会更新），日期保留最早的
+            showToast(`✅ ${type} 已合并，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
+            await save();
+            renderAll();
+            clearInputs();
+            // 合并后自动刷新行情
+            setTimeout(() => refreshQuotes(true), 500);
+            return;
+        } else {
+            // 新建资产
+            const asset = {
+                id: 'a' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                type: type,
+                code: code,
+                amount: amount,
+                cost: cost,
+                date: date,
+                currentPrice: cost,  // 暂用成本价，刷新后更新
+                name: ''
+            };
+            app.assets.push(asset);
+        }
+    }
+
+    // ---- 新资产保存（无合并的情况） ----
+    await save();
+    renderAll();
+    clearInputs();
+    showToast('✅ 资产已添加，正在刷新行情...');
+    setTimeout(() => refreshQuotes(true), 500);
+}
+
+// 辅助：清空输入框
+function clearInputs() {
+    document.getElementById('assetCode').value = '';
+    document.getElementById('assetAmount').value = '';
+    document.getElementById('assetCost').value = '';
+}
 
     async function removeAsset(id) {
         if (!confirm('确认删除此资产？')) return;
