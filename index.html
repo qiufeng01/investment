@@ -167,9 +167,9 @@
             <select id="assetType" style="width:110px;">
                 <option value="stock">股票</option>
                 <option value="fund">基金</option>
-                <option value="gold">黄金现货</option>
+                <option value="gold">黄金</option>
                 <option value="deposit">银行存款</option>
-                <option value="cash">现金(余额宝)</option>
+                <option value="cash">现金</option>
             </select>
             <!-- 代码输入框，存款时变为“期限(月)” -->
             <input type="text" id="assetCode" placeholder="代码 (sh600000)" style="width:130px;">
@@ -455,7 +455,7 @@
                     } else if (asset.type === 'gold') {
                         await new Promise(resolve => {
                             fetchGold(info => {
-                                if (info) { asset.currentPrice = info.price; asset.name = info.name || asset.name || '黄金现货'; } else { hasError = true; }
+                                if (info) { asset.currentPrice = info.price; asset.name = info.name || asset.name || '黄金'; } else { hasError = true; }
                                 resolve();
                             });
                         });
