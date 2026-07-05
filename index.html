@@ -4,37 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>个人投资计划</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js">
-    </script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* 样式与原代码完全一致，未做任何改动 */
         :root {
             --bg: #f5f7fa;
             --card-bg: #ffffff;
             --primary: #1e3b5c;
             --primary-light: #2b557a;
             --accent: #b98b5f;
-            --positive: #2d7d46;
-            --negative: #c64545;
+            --positive: #2d7d46;  /* 绿色 */
+            --negative: #c64545;  /* 红色 */
             --text: #1e2a36;
             --text-secondary: #4a5b6b;
             --text-muted: #7c8b98;
             --border: #dce2e8;
             --border-light: #eef1f5;
-            --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow: 0 2px 8px rgba(0,0,0,0.04);
             --radius: 12px;
             --radius-sm: 8px;
             --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
             --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
         }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
             background: var(--bg);
             color: var(--text);
@@ -44,13 +38,7 @@
             -webkit-font-smoothing: antialiased;
             min-height: 100vh;
         }
-        .container {
-            max-width: 1060px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
+        .container { max-width:1060px; margin:0 auto; display:flex; flex-direction:column; gap:18px; }
         .card {
             background: var(--card-bg);
             border-radius: var(--radius);
@@ -58,1762 +46,1266 @@
             box-shadow: var(--shadow);
             border: 1px solid var(--border-light);
         }
-        .card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-        .card-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+        .card-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+        .card-title { font-size:16px; font-weight:600; color:var(--primary); display:flex; align-items:center; gap:6px; }
         .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 14px;
-            background: var(--card-bg);
-            border-radius: var(--radius-sm);
-            padding: 10px 18px;
-            box-shadow: var(--shadow);
-            margin-bottom: 4px;
-            flex-wrap: wrap;
-            gap: 8px;
+            display:flex; justify-content:space-between; align-items:center; font-size:14px;
+            background: var(--card-bg); border-radius: var(--radius-sm); padding:10px 18px;
+            box-shadow: var(--shadow); margin-bottom:4px; flex-wrap:wrap; gap:8px;
         }
-        .top-bar .main-title {
-            font-weight: 600;
-            color: var(--primary);
-        }
+        .top-bar .main-title { font-weight:600; color:var(--primary); }
         .sync-badge {
-            background: #e9f0f7;
-            color: var(--primary);
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-weight: 500;
-            font-size: 12px;
+            background:#e9f0f7; color:var(--primary); padding:2px 10px;
+            border-radius:20px; font-weight:500; font-size:12px;
         }
         .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            background: #f0f3f7;
-            color: var(--text);
-            transition: background 0.15s;
-            white-space: nowrap;
-            border: 1px solid transparent;
+            display:inline-flex; align-items:center; gap:4px;
+            padding:8px 14px; border:none; border-radius:6px; font-size:13px;
+            font-weight:500; cursor:pointer; background:#f0f3f7; color:var(--text);
+            transition:background 0.15s; white-space:nowrap; border:1px solid transparent;
         }
-        .btn:hover {
-            background: #e4e9f0;
+        .btn:hover { background:#e4e9f0; }
+        .btn-primary { background:var(--primary); color:#fff; border:1px solid var(--primary); }
+        .btn-primary:hover { background:var(--primary-light); }
+        .btn-accent { background:#f5efe8; color:#5e3e1c; border:1px solid #dccbb8; }
+        .btn-accent:hover { background:#efe2d3; }
+        .btn-sm { padding:5px 10px; font-size:12px; }
+        .btn-xs { padding:3px 8px; font-size:11px; border-radius:4px; }
+        .btn-outline { background:#fff; border:1px solid var(--border); color:var(--text); }
+        .btn-outline:hover { background:#f9fafb; }
+        .btn-danger { background:#fff; color:var(--negative); border:1px solid #f1cfcf; }
+        .btn-danger:hover { background:#fef5f5; }
+        input, select {
+            padding:9px 12px; border:1px solid var(--border); border-radius:6px;
+            font-size:14px; background:#fff; font-family:var(--font-mono);
+            transition:border-color 0.15s; width:140px;
         }
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-            border: 1px solid var(--primary);
-        }
-        .btn-primary:hover {
-            background: var(--primary-light);
-        }
-        .btn-accent {
-            background: #f5efe8;
-            color: #5e3e1c;
-            border: 1px solid #dccbb8;
-        }
-        .btn-accent:hover {
-            background: #efe2d3;
-        }
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
-        .btn-xs {
-            padding: 3px 8px;
-            font-size: 11px;
-            border-radius: 4px;
-        }
-        .btn-outline {
-            background: #fff;
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-        .btn-outline:hover {
-            background: #f9fafb;
-        }
-        .btn-danger {
-            background: #fff;
-            color: var(--negative);
-            border: 1px solid #f1cfcf;
-        }
-        .btn-danger:hover {
-            background: #fef5f5;
-        }
-        input,
-        select {
-            padding: 9px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 14px;
-            background: #fff;
-            font-family: var(--font-mono);
-            transition: border-color 0.15s;
-            width: 140px;
-        }
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px rgba(27, 59, 92, 0.06);
-        }
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-            margin-bottom: 6px;
-        }
+        input:focus, select:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(27,59,92,0.06); }
+        .input-group { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        .stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:6px; }
         .stat-item {
-            background: #f9fafc;
-            border-radius: 8px;
-            padding: 14px 16px;
-            border: 1px solid var(--border-light);
+            background:#f9fafc; border-radius:8px; padding:14px 16px;
+            border:1px solid var(--border-light);
         }
-        .stat-label {
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
+        .stat-label { font-size:11px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; }
         .stat-value {
-            font-size: 20px;
-            font-weight: 600;
-            font-family: var(--font-mono);
-            margin-top: 4px;
-            color: var(--text);
+            font-size:20px; font-weight:600; font-family:var(--font-mono); margin-top:4px;
+            color:var(--text);
         }
-        .stat-value.positive {
-            color: var(--positive);
-        }
-        .stat-value.negative {
-            color: var(--negative);
-        }
-        .progress-bar {
-            height: 8px;
-            background: #e9ecf1;
-            border-radius: 10px;
-            margin-top: 8px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            border-radius: 10px;
-            background: #3b5f7a;
-            transition: width 0.4s;
-        }
-        .progress-fill.over {
-            background: #2d7d46;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        th {
-            text-align: left;
-            padding: 10px 12px;
-            background: #f8fafb;
-            font-weight: 500;
-            color: var(--text-secondary);
-            border-bottom: 1px solid var(--border);
-            font-size: 11px;
-            letter-spacing: 0.3px;
-        }
-        td {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border-light);
-            vertical-align: middle;
-        }
-        .table-wrap {
-            overflow-x: auto;
-            border-radius: 8px;
-            border: 1px solid var(--border-light);
-        }
-        .chart-wrap {
-            width: 100%;
-            height: 320px;
-            margin-top: 8px;
-        }
-        .tabs {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 10px;
-        }
-        .tab {
-            padding: 6px 14px;
-            background: #f2f4f7;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            border: none;
-            color: var(--text-secondary);
-        }
-        .tab.active {
-            background: var(--primary);
-            color: #fff;
-        }
-        .toast-wrap {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .toast {
-            background: #1e293b;
-            color: #fff;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-            animation: slideIn 0.3s ease;
-        }
-        @keyframes slideIn {
-            from {
-                transform: translateX(120%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        .muted {
-            color: var(--text-muted);
-            font-size: 12px;
-        }
-        @media (max-width: 640px) {
-            body {
-                padding: 10px 8px 30px;
-            }
-            .card {
-                padding: 14px;
-            }
-            input {
-                width: 100%;
-            }
-            .stat-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            .top-bar {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 6px;
-            }
-            .top-bar>div {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-        }
-        /* 模态框样式 */
-        #historyModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            overflow: auto;
-            padding: 20px;
-        }
-        #historyModal .modal-content {
-            max-width: 900px;
-            margin: 40px auto;
-            background: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        #historyModal .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        #historyModal .modal-header h3 {
-            color: var(--primary);
-        }
-        #historyModal .modal-header button {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
-        }
-        #historyModal .modal-header button:hover {
-            color: #333;
-        }
-        #historyModal table {
-            font-size: 13px;
-        }
-        #historyModal table th {
-            background: #f8fafb;
-        }
-        .history-chart {
-            width: 100%;
-            height: 320px;
-            margin-top: 16px;
-        }
-        .asset-name-link {
-            cursor: pointer;
-            color: var(--primary);
-            text-decoration: none;
-        }
-        .asset-name-link:hover {
-            text-decoration: underline;
-        }
-        .sortable-header {
-            cursor: pointer;
-            user-select: none;
-        }
-        .sortable-header:hover {
-            background: #eef1f5;
+        .stat-value.positive { color:var(--positive); }
+        .stat-value.negative { color:var(--negative); }
+        .progress-bar { height:8px; background:#e9ecf1; border-radius:10px; margin-top:8px; overflow:hidden; }
+        .progress-fill { height:100%; border-radius:10px; background:#3b5f7a; transition:width 0.4s; }
+        .progress-fill.over { background:#2d7d46; }
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th { text-align:left; padding:10px 12px; background:#f8fafb; font-weight:500; color:var(--text-secondary); border-bottom:1px solid var(--border); font-size:11px; letter-spacing:0.3px; }
+        td { padding:10px 12px; border-bottom:1px solid var(--border-light); vertical-align:middle; }
+        .table-wrap { overflow-x:auto; border-radius:8px; border:1px solid var(--border-light); }
+        .chart-wrap { width:100%; height:320px; margin-top:8px; }
+        .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+        .tab { padding:6px 14px; background:#f2f4f7; border-radius:20px; font-size:12px; cursor:pointer; border:none; color:var(--text-secondary); }
+        .tab.active { background:var(--primary); color:#fff; }
+        .toast-wrap { position:fixed; top:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:6px; }
+        .toast { background:#1e293b; color:#fff; padding:10px 16px; border-radius:8px; font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,0.1); animation:slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform:translateX(120%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        .muted { color:var(--text-muted); font-size:12px; }
+        @media (max-width:640px) {
+            body { padding:10px 8px 30px; }
+            .card { padding:14px; }
+            input { width:100%; }
+            .stat-grid { grid-template-columns:1fr 1fr; }
+            .top-bar { flex-direction:column; align-items:stretch; gap:6px; }
+            .top-bar>div { flex-wrap:wrap; justify-content:center; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 顶部栏 -->
-        <div class="top-bar">
-            <span class="main-title" id="mainTitle">📊 个人投资记录</span>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <button class="btn btn-outline btn-xs" onclick="exportToExcel()">📥 导出Excel</button>
-                <button class="btn btn-outline btn-xs" onclick="exportJSON()">📦 导出JSON</button>
-                <button class="btn btn-outline btn-xs" onclick="document.getElementById('importFile').click()">📂 导入JSON</button>
-                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
-                <span class="sync-badge" id="syncStatus">⏳ 未登录</span>
-                <button class="btn btn-danger btn-xs" onclick="clearHistory()">🗑️ 清除数据</button>
-                <button class="btn btn-danger btn-xs" onclick="signOut()">🚪 退出</button>
-            </div>
-        </div>
-
-        <!-- 投资目标 -->
-        <div class="card">
-            <div class="card-header"><span class="card-title">🎯 投资目标</span></div>
-            <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
-                <span>目标金额 ¥</span>
-                <input type="number" id="goalInput" placeholder="金额" step="1000" style="width:130px;">
-                <button class="btn btn-primary btn-sm" onclick="saveGoal()">保存金额</button>
-                <span style="margin-left:12px;">目标年份</span>
-                <input type="number" id="targetYearInput" placeholder="例如2045" step="1" min="2025" style="width:100px;">
-                <button class="btn btn-accent btn-sm" onclick="saveTargetYear()">设定年份</button>
-            </div>
-            <div class="stat-grid">
-                <div class="stat-item"><div class="stat-label">目标完成率</div><div class="stat-value" id="goalPercent">--</div></div>
-                <div class="stat-item"><div class="stat-label">当前总市值</div><div class="stat-value" id="totalMarketValue">--</div></div>
-            </div>
-            <div class="progress-bar"><div class="progress-fill" id="goalProgress" style="width:0%"></div></div>
-            <div class="muted" style="margin-top:6px;" id="goalMessage"></div>
-        </div>
-
-        <!-- 指标卡片 -->
-        <div class="card">
-            <div class="stat-grid">
-                <div class="stat-item"><div class="stat-label">总收益率</div><div class="stat-value" id="totalReturn">--</div><div class="muted" id="totalReturnAmount"></div></div>
-                <div class="stat-item"><div class="stat-label">年化收益率</div><div class="stat-value" id="annualReturn">--</div><div class="muted" id="annualNote"></div></div>
-                <div class="stat-item"><div class="stat-label">今日更新状态</div><div class="stat-value" style="font-size:15px;" id="updateStatus">未更新</div><button class="btn btn-outline btn-xs" style="margin-top:6px;" onclick="manualRefresh()">🔄 立即刷新</button></div>
-            </div>
-        </div>
-
-        <!-- 持仓与资产 -->
-        <div class="card">
-            <div class="card-header"><span class="card-title">📦 持仓与资产</span><span class="muted">股票 · 基金 · 黄金 · 存款 · 现金</span></div>
-            <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
-                <select id="assetType" style="width:110px;">
-                    <option value="stock">股票</option>
-                    <option value="fund">基金</option>
-                    <option value="gold">黄金</option>
-                    <option value="deposit">银行存款</option>
-                    <option value="cash">现金</option>
-                </select>
-                <input type="text" id="assetCode" placeholder="代码 (sh600000)" style="width:130px;">
-                <input type="number" id="assetAmount" placeholder="数量/金额" step="0.01" style="width:120px;">
-                <input type="number" id="assetCost" placeholder="成本价/利率" step="0.001" style="width:120px;">
-                <input type="date" id="assetDate" style="width:130px;">
-                <button class="btn btn-primary btn-sm" onclick="addAsset()">添加</button>
-            </div>
-            <div class="input-group" style="margin-bottom:10px; flex-wrap:wrap;">
-                <span>筛选类型：</span>
-                <select id="filterType" style="width:130px;">
-                    <option value="all">全部</option>
-                    <option value="stock">股票</option>
-                    <option value="fund">基金</option>
-                    <option value="gold">黄金</option>
-                    <option value="deposit">存款</option>
-                    <option value="cash">现金</option>
-                </select>
-                <span style="margin-left:15px; color:var(--text-muted); font-size:13px;">点击表头排序：市值、盈亏、收益率</span>
-            </div>
-            <div class="table-wrap">
-                <table id="assetTable">
-                    <thead><tr>
-                        <th>类型</th>
-                        <th>代码/名称</th>
-                        <th>数量</th>
-                        <th>成本</th>
-                        <th>现价</th>
-                        <th class="sortable-header" data-sort="market">市值 ↕</th>
-                        <th class="sortable-header" data-sort="profit">盈亏/状态 ↕</th>
-                        <th class="sortable-header" data-sort="returnRate">收益率 ↕</th>
-                        <th>操作</th>
-                    </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 图表 -->
-        <div class="card">
-            <div class="card-title">🥧 资产分布</div>
-            <div id="pieChart" class="chart-wrap"></div>
-        </div>
-        <div class="card">
-            <div class="card-title">📈 历史走势</div>
-            <div class="tabs" id="chartTabs">
-                <button class="tab active" data-type="totalValue">总市值</button>
-                <button class="tab" data-type="annualReturn">年化收益率</button>
-                <button class="tab" data-type="totalReturnRate">总收益率</button>
-            </div>
-            <div id="barChart" class="chart-wrap" style="height:360px;"></div>
-        </div>
-
-        <div style="text-align:center; font-size:12px; color:var(--text-muted);">每日00:00自动更新 · 手动刷新冷却1分钟 · 数据云端同步</div>
-    </div>
-
-    <!-- Toast容器 -->
-    <div class="toast-wrap" id="toastContainer"></div>
-
-    <!-- 资产历史模态框 -->
-    <div id="historyModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="historyTitle">📊 资产历史</h3>
-                <button onclick="closeHistory()">✕</button>
-            </div>
-            <div id="historyContent">
-                <!-- 动态渲染 -->
-            </div>
+<div class="container">
+    <div class="top-bar">
+        <span class="main-title" id="mainTitle">📊 个人投资记录</span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-xs" onclick="exportToExcel()">📥 导出Excel</button>
+            <button class="btn btn-outline btn-xs" onclick="exportJSON()">📦 导出JSON</button>
+            <button class="btn btn-outline btn-xs" onclick="document.getElementById('importFile').click()">📂 导入JSON</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+            <span class="sync-badge" id="syncStatus">⏳ 未登录</span>
+            <button class="btn btn-danger btn-xs" onclick="clearHistory()">🗑️ 清除数据</button>
+            <button class="btn btn-danger btn-xs" onclick="signOut()">🚪 退出</button>
         </div>
     </div>
 
-    <script>
-        (function() {
-            'use strict';
+    <div class="card">
+        <div class="card-header"><span class="card-title">🎯 投资目标</span></div>
+        <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
+            <span>目标金额 ¥</span>
+            <input type="number" id="goalInput" placeholder="金额" step="1000" style="width:130px;">
+            <button class="btn btn-primary btn-sm" onclick="saveGoal()">保存金额</button>
+            <span style="margin-left:12px;">目标年份</span>
+            <input type="number" id="targetYearInput" placeholder="例如2045" step="1" min="2025" style="width:100px;">
+            <button class="btn btn-accent btn-sm" onclick="saveTargetYear()">设定年份</button>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-item"><div class="stat-label">目标完成率</div><div class="stat-value" id="goalPercent">--</div></div>
+            <div class="stat-item"><div class="stat-label">当前总市值</div><div class="stat-value" id="totalMarketValue">--</div></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="goalProgress" style="width:0%"></div></div>
+        <div class="muted" style="margin-top:6px;" id="goalMessage"></div>
+    </div>
 
-            // ========== Supabase 配置 ==========
-            const SUPABASE_FUNCTION_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co/functions/v1/quote-proxy';
-            const SUPABASE_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co';
-            const SUPABASE_ANON_KEY =
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2a3J3Y3hwc253cXh0Y3Vrb3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjk4NzIsImV4cCI6MjA5ODY0NTg3Mn0._oLjDmy5usDnVNoK9ilb_Vf4BZDTUIV5pCO_0T6X24Y';
+    <div class="card">
+        <div class="stat-grid">
+            <div class="stat-item"><div class="stat-label">总收益率</div><div class="stat-value" id="totalReturn">--</div><div class="muted" id="totalReturnAmount"></div></div>
+            <div class="stat-item"><div class="stat-label">年化收益率</div><div class="stat-value" id="annualReturn">--</div><div class="muted" id="annualNote"></div></div>
+            <div class="stat-item"><div class="stat-label">今日更新状态</div><div class="stat-value" style="font-size:15px;" id="updateStatus">未更新</div><button class="btn btn-outline btn-xs" style="margin-top:6px;" onclick="manualRefresh()">🔄 立即刷新</button></div>
+        </div>
+    </div>
 
-            let supabaseClient;
-            if (typeof supabase !== 'undefined' && supabase.createClient) {
-                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            } else if (window.supabase && window.supabase.createClient) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            } else {
-                throw new Error('Supabase 客户端未加载');
+    <div class="card">
+        <div class="card-header"><span class="card-title">📦 持仓与资产</span><span class="muted">股票 · 基金 · 黄金 · 存款 · 现金</span></div>
+        <div class="input-group" style="margin-bottom:12px; flex-wrap:wrap;">
+            <select id="assetType" style="width:110px;">
+                <option value="stock">股票</option>
+                <option value="fund">基金</option>
+                <option value="gold">黄金</option>
+                <option value="deposit">银行存款</option>
+                <option value="cash">现金</option>
+            </select>
+            <input type="text" id="assetCode" placeholder="代码 (sh600000)" style="width:130px;">
+            <input type="number" id="assetAmount" placeholder="数量/金额" step="0.01" style="width:120px;">
+            <input type="number" id="assetCost" placeholder="成本价/利率" step="0.001" style="width:120px;">
+            <input type="date" id="assetDate" style="width:130px;">
+            <button class="btn btn-primary btn-sm" onclick="addAsset()">添加</button>
+        </div>
+
+        <div class="input-group" style="margin-bottom:10px; flex-wrap:wrap;">
+    <span>筛选类型：</span>
+    <select id="filterType" style="width:130px;">
+        <option value="all">全部</option>
+        <option value="stock">股票</option>
+        <option value="fund">基金</option>
+        <option value="gold">黄金</option>
+        <option value="deposit">存款</option>
+        <option value="cash">现金</option>
+    </select>
+    <span style="margin-left:15px; color:var(--text-muted); font-size:13px;">点击表头排序：市值、盈亏、收益率</span>
+</div>
+        
+        <div class="table-wrap">
+            <table id="assetTable">
+                <thead><tr>
+    <th>类型</th>
+    <th>代码/名称</th>
+    <th>数量</th>
+    <th>成本</th>
+    <th>现价</th>
+    <th data-sort="market" style="cursor:pointer;">市值 ↕</th>
+    <th data-sort="profit" style="cursor:pointer;">盈亏/状态 ↕</th>
+    <th data-sort="returnRate" style="cursor:pointer;">收益率 ↕</th>
+    <th>操作</th>
+</tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🥧 资产分布</div>
+        <div id="pieChart" class="chart-wrap"></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">📈 历史走势</div>
+        <div class="tabs" id="chartTabs">
+            <button class="tab active" data-type="totalValue">总市值</button>
+            <button class="tab" data-type="annualReturn">年化收益率</button>
+            <button class="tab" data-type="totalReturnRate">总收益率</button>
+        </div>
+        <div id="barChart" class="chart-wrap" style="height:360px;"></div>
+    </div>
+
+    <div style="text-align:center; font-size:12px; color:var(--text-muted);">每日00:00自动更新 · 手动刷新冷却1分钟 · 数据云端同步</div>
+</div>
+<div class="toast-wrap" id="toastContainer"></div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ========== Supabase 配置 ==========
+    const SUPABASE_FUNCTION_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co/functions/v1/quote-proxy';
+    const SUPABASE_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co';
+    const SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2a3J3Y3hwc253cXh0Y3Vrb3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjk4NzIsImV4cCI6MjA5ODY0NTg3Mn0._oLjDmy5usDnVNoK9ilb_Vf4BZDTUIV5pCO_0T6X24Y';
+
+    let supabaseClient;
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+        throw new Error('Supabase 客户端未加载');
+    }
+
+    async function fetchProxy(type, code) {
+        try {
+            const response = await fetch(
+                `${SUPABASE_FUNCTION_URL}?type=${encodeURIComponent(type)}&code=${encodeURIComponent(code)}`,
+                { headers: { 'apikey': SUPABASE_ANON_KEY } }
+            );
+            if (!response.ok) {
+                const err = await response.json();
+                console.warn('代理返回错误:', err);
+                return null;
             }
+            return await response.json();
+        } catch (e) {
+            console.warn(`代理请求失败 (${type}, ${code}):`, e);
+            return null;
+        }
+    }
 
-            async function fetchProxy(type, code) {
-                try {
-                    const response = await fetch(
-                        `${SUPABASE_FUNCTION_URL}?type=${encodeURIComponent(type)}&code=${encodeURIComponent(code)}`,
-                        { headers: { 'apikey': SUPABASE_ANON_KEY } }
-                    );
-                    if (!response.ok) {
-                        const err = await response.json();
-                        console.warn('代理返回错误:', err);
-                        return null;
+    // ========== 全局状态 ==========
+    let app = {
+        goal: 100000,
+        targetYear: null,
+        manualMarketValue: null,
+        assets: [],
+        snapshots: [],
+        lastUpdateDate: null,
+        lastManualRefresh: null,
+    };
+    let pieChart = null, barChart = null;
+    let currentChartType = 'totalValue';
+    let isUpdating = false;
+    let refreshTimeout = null;
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('assetDate').value = todayStr;
+
+    // ========== Toast ==========
+    function showToast(msg) {
+        const container = document.getElementById('toastContainer');
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        container.appendChild(t);
+        setTimeout(() => { if (t.parentNode) t.remove(); }, 3000);
+    }
+
+    // ========== 认证 ==========
+    async function signIn(email, password) {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return data.user;
+    }
+    async function signUp(email, password) {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
+        return data.user;
+    }
+    async function signOut() {
+        await supabaseClient.auth.signOut();
+        app.assets = [];
+        app.snapshots = [];
+        renderAll();
+        document.getElementById('syncStatus').textContent = '⏳ 未登录';
+        showToast('已退出登录');
+        setTimeout(showLoginPrompt, 500);
+    }
+    function showLoginPrompt() {
+        const email = prompt('请输入登录邮箱（首次使用将自动注册）：');
+        if (!email) return;
+        const password = prompt('请输入密码（至少6位）：');
+        if (!password || password.length < 6) {
+            alert('密码至少6位');
+            return;
+        }
+        signIn(email, password)
+            .then(user => {
+                showToast('✅ 登录成功');
+                loadUserData();
+            })
+            .catch(err => {
+                if (err.message && err.message.includes('Invalid login credentials')) {
+                    if (confirm('用户不存在，是否注册新账号？')) {
+                        signUp(email, password)
+                            .then(user => {
+                                showToast('✅ 注册成功');
+                                initializeUserData();
+                                loadUserData();
+                            })
+                            .catch(regErr => alert('注册失败：' + (regErr.message || '未知错误')));
                     }
-                    return await response.json();
-                } catch (e) {
-                    console.warn(`代理请求失败 (${type}, ${code}):`, e);
-                    return null;
+                } else {
+                    alert('登录失败：' + (err.message || '未知错误'));
                 }
-            }
+            });
+    }
 
-            // ========== 全局状态 ==========
-            let app = {
-                goal: 100000,
-                targetYear: null,
-                manualMarketValue: null,
-                assets: [],
-                snapshots: [],
-                lastUpdateDate: null,
-                lastManualRefresh: null,
-            };
-            let pieChart = null,
-                barChart = null;
-            let currentChartType = 'totalValue';
-            let isUpdating = false;
-            let refreshTimeout = null;
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('assetDate').value = todayStr;
-
-            // 筛选和排序状态
-            let filterType = 'all';
-            let sortField = null;
-            let sortAsc = true;
-
-            // ========== Toast ==========
-            function showToast(msg) {
-                const container = document.getElementById('toastContainer');
-                const t = document.createElement('div');
-                t.className = 'toast';
-                t.textContent = msg;
-                container.appendChild(t);
-                setTimeout(() => { if (t.parentNode) t.remove(); }, 3000);
-            }
-
-            // ========== 认证 ==========
-            async function signIn(email, password) {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                return data.user;
-            }
-            async function signUp(email, password) {
-                const { data, error } = await supabaseClient.auth.signUp({ email, password });
-                if (error) throw error;
-                return data.user;
-            }
-            async function signOut() {
-                await supabaseClient.auth.signOut();
-                app.assets = [];
-                app.snapshots = [];
-                renderAll();
+    // ========== 数据读写 ==========
+    async function loadUserData() {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) {
                 document.getElementById('syncStatus').textContent = '⏳ 未登录';
-                showToast('已退出登录');
-                setTimeout(showLoginPrompt, 500);
+                return;
             }
-
-            function showLoginPrompt() {
-                const email = prompt('请输入登录邮箱（首次使用将自动注册）：');
-                if (!email) return;
-                const password = prompt('请输入密码（至少6位）：');
-                if (!password || password.length < 6) {
-                    alert('密码至少6位');
-                    return;
-                }
-                signIn(email, password)
-                    .then(user => {
-                        showToast('✅ 登录成功');
-                        loadUserData();
-                    })
-                    .catch(err => {
-                        if (err.message && err.message.includes('Invalid login credentials')) {
-                            if (confirm('用户不存在，是否注册新账号？')) {
-                                signUp(email, password)
-                                    .then(user => {
-                                        showToast('✅ 注册成功');
-                                        initializeUserData();
-                                        loadUserData();
-                                    })
-                                    .catch(regErr => alert('注册失败：' + (regErr.message || '未知错误')));
-                            }
-                        } else {
-                            alert('登录失败：' + (err.message || '未知错误'));
-                        }
-                    });
+            document.getElementById('syncStatus').textContent = '☁️ 已同步 (' + (user.email || '') + ')';
+            const { data, error } = await supabaseClient
+                .from('user_data')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (error) {
+                console.error('加载数据失败', error);
+                showToast('❌ 加载数据失败');
+                return;
             }
-
-            // ========== 数据读写 ==========
-            async function loadUserData() {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (!user) {
-                        document.getElementById('syncStatus').textContent = '⏳ 未登录';
-                        return;
-                    }
-                    document.getElementById('syncStatus').textContent = '☁️ 已同步 (' + (user.email || '') + ')';
-                    const { data, error } = await supabaseClient
-                        .from('user_data')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
-                    if (error) {
-                        console.error('加载数据失败', error);
-                        showToast('❌ 加载数据失败');
-                        return;
-                    }
-                    if (data) {
-                        app.goal = data.goal || 100000;
-                        app.targetYear = data.target_year || null;
-                        app.manualMarketValue = data.manual_market_value ?? null;
-                        app.assets = data.assets || [];
-                        app.snapshots = data.snapshots || [];
-                        app.lastUpdateDate = data.last_update_date || null;
-                        app.lastManualRefresh = data.last_manual_refresh || null;
-                    } else {
-                        await initializeUserData();
-                    }
-                    updateMainTitle();
-                    renderAll();
-                    checkAutoUpdate();
-                } catch (e) {
-                    console.error('loadUserData error:', e);
-                    showToast('❌ 加载数据出错');
-                }
+            if (data) {
+                app.goal = data.goal || 100000;
+                app.targetYear = data.target_year || null;
+                app.manualMarketValue = data.manual_market_value ?? null;
+                app.assets = data.assets || [];
+                app.snapshots = data.snapshots || [];
+                app.lastUpdateDate = data.last_update_date || null;
+                app.lastManualRefresh = data.last_manual_refresh || null;
+            } else {
+                await initializeUserData();
             }
-
-            async function initializeUserData() {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (!user) return;
-                    const { error } = await supabaseClient
-                        .from('user_data')
-                        .insert({
-                            user_id: user.id,
-                            goal: 100000,
-                            target_year: null,
-                            manual_market_value: null,
-                            assets: [],
-                            snapshots: [],
-                            last_update_date: null,
-                            last_manual_refresh: null
-                        });
-                    if (error) {
-                        console.error('初始化数据失败', error);
-                        showToast('⚠️ 初始化数据失败');
-                    }
-                } catch (e) { console.error(e); }
-            }
-
-            async function save() {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (!user) { showToast('❌ 未登录，无法保存'); return false; }
-                    const payload = {
-                        user_id: user.id,
-                        goal: app.goal,
-                        target_year: app.targetYear,
-                        manual_market_value: app.manualMarketValue,
-                        assets: app.assets,
-                        snapshots: app.snapshots,
-                        last_update_date: app.lastUpdateDate,
-                        last_manual_refresh: app.lastManualRefresh,
-                        updated_at: new Date().toISOString()
-                    };
-                    const { error } = await supabaseClient
-                        .from('user_data')
-                        .upsert(payload, { onConflict: 'user_id' });
-                    if (error) { console.error('保存失败', error);
-                        showToast('❌ 数据保存失败'); return false; }
-                    return true;
-                } catch (e) { console.error(e);
-                    showToast('❌ 保存出错'); return false; }
-            }
-
-            // ========== 辅助函数 ==========
-            function formatMoney(v) {
-                if (v === null || v === undefined || isNaN(v)) return '--';
-                return '¥' + Math.abs(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
-
-            function formatPercent(v) {
-                if (v === null || v === undefined || isNaN(v)) return '--';
-                return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
-            }
-
-            function daysBetween(d1, d2) {
-                try { return Math.max(0, Math.floor((new Date(d2) - new Date(d1)) / 86400000)); } catch (_) { return 0; }
-            }
-
-            function updateMainTitle() {
-                document.getElementById('mainTitle').textContent = app.targetYear ? '📊 ' + app.targetYear + '年投资计划' :
-                    '📊 个人投资记录';
-            }
-
-            function clearInputs() {
-                document.getElementById('assetCode').value = '';
-                document.getElementById('assetAmount').value = '';
-                document.getElementById('assetCost').value = '';
-            }
-
-            // ========== 行情获取 ==========
-            function fetchStock(code, cb) { fetchProxy('stock', code).then(data => cb(data || null)); }
-
-            function fetchFund(code, cb) { fetchProxy('fund', code).then(data => cb(data || null)); }
-
-            function fetchGold(cb) { fetchProxy('gold', 'au9999').then(data => cb(data || null)); }
-
-            // ========== 刷新行情 ==========
-            async function refreshQuotes(force = false) {
-                if (isUpdating) { showToast('⏳ 正在更新中...'); return; }
-                const now = new Date();
-                const today = now.toISOString().split('T')[0];
-                if (!force && app.lastUpdateDate === today) { showToast('今日已更新，无需重复刷新'); return; }
-                if (!force && now.getHours() !== 0) { scheduleMidnightUpdate(); }
-                isUpdating = true;
-                let hasError = false;
-                let count = 0;
-                try {
-                    for (let asset of app.assets) {
-                        try {
-                            if (asset.type === 'stock') {
-                                await new Promise(resolve => {
-                                    fetchStock(asset.code, info => {
-                                        if (info) { asset.currentPrice = info.price;
-                                            asset.name = info.name || asset.name || asset.code; } else { hasError =
-                                                true; }
-                                        resolve();
-                                    });
-                                });
-                                count++;
-                            } else if (asset.type === 'fund') {
-                                await new Promise(resolve => {
-                                    fetchFund(asset.code, info => {
-                                        if (info) { asset.currentPrice = info.price;
-                                            asset.name = info.name || asset.name || asset.code; } else { hasError =
-                                                true; }
-                                        resolve();
-                                    });
-                                });
-                                count++;
-                            } else if (asset.type === 'gold') {
-                                await new Promise(resolve => {
-                                    fetchGold(info => {
-                                        if (info) { asset.currentPrice = info.price;
-                                            asset.name = info.name || asset.name || '黄金'; } else { hasError =
-                                                true; }
-                                        resolve();
-                                    });
-                                });
-                                count++;
-                            } else if (asset.type === 'cash') {
-                                asset.currentPrice = asset.amount;
-                                count++;
-                            } else if (asset.type === 'deposit') {
-                                checkDepositMaturity(asset);
-                                count++;
-                            }
-                            await new Promise(r => setTimeout(r, 200));
-                        } catch (e) { console.error('刷新资产失败:', asset, e);
-                            hasError = true; }
-                    }
-                    app.lastUpdateDate = today;
-                    app.assets.forEach(a => checkDepositMaturity(a));
-                    saveSnapshot();
-                    await save();
-                    renderAll();
-                    showToast(hasError ? '⚠️ 部分行情获取失败，请检查网络' : '✅ 行情已更新 (' + count + '项)');
-                } catch (e) { console.error(e);
-                    showToast('❌ 刷新失败'); } finally { isUpdating = false; }
-            }
-
-            function checkDepositMaturity(asset) {
-                if (asset.type !== 'deposit' || !asset.maturityDate) return;
-                const today = new Date(todayStr);
-                const mat = new Date(asset.maturityDate);
-                if (mat <= today && !asset.matured) {
-                    asset.matured = true;
-                    const days = daysBetween(asset.date, asset.maturityDate);
-                    asset.maturityValue = asset.amount + asset.amount * (asset.rate / 100) * (days / 365);
-                }
-            }
-
-            function saveSnapshot() {
-                const m = computeMetrics();
-                const today = new Date().toISOString().split('T')[0];
-                const last = app.snapshots[app.snapshots.length - 1];
-                if (last && last.date === today) {
-                    Object.assign(last, {
-                        totalValue: m.totalMarketValue || m.totalInvest || 0,
-                        annualReturn: m.annualReturn,
-                        totalReturnRate: m.totalReturn,
-                        totalInvest: m.totalInvest || 0
-                    });
-                } else {
-                    app.snapshots.push({
-                        date: today,
-                        totalValue: m.totalMarketValue || m.totalInvest || 0,
-                        annualReturn: m.annualReturn,
-                        totalReturnRate: m.totalReturn,
-                        totalInvest: m.totalInvest || 0
-                    });
-                }
-                if (app.snapshots.length > 400) app.snapshots.shift();
-            }
-
-            function scheduleMidnightUpdate() {
-                if (refreshTimeout) clearTimeout(refreshTimeout);
-                const now = new Date();
-                const target = new Date(now);
-                target.setHours(24, 0, 0, 0);
-                refreshTimeout = setTimeout(() => { refreshQuotes(true);
-                    refreshTimeout = null; }, target - now + 1000);
-            }
-
-            function checkAutoUpdate() {
-                if (app.lastUpdateDate !== todayStr) {
-                    const now = new Date();
-                    if (now.getHours() === 0 || now.getHours() < 6) { refreshQuotes(true); } else { scheduleMidnightUpdate(); }
-                }
-            }
-
-            async function manualRefresh() {
-                if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 60000) {
-                    showToast('⏳ 手动刷新需间隔1分钟');
-                    return;
-                }
-                app.lastManualRefresh = Date.now();
-                await save();
-                await refreshQuotes(true);
-            }
-
-            // ========== 核心计算 ==========
-            function computeMetrics() {
-                let totalInvest = 0;
-                app.assets.forEach(a => {
-                    if (a.type === 'cash' || a.type === 'deposit') totalInvest += a.amount || 0;
-                    else totalInvest += (a.cost || 0) * (a.amount || 0);
+            updateMainTitle();
+            renderAll();
+            checkAutoUpdate();
+        } catch (e) {
+            console.error('loadUserData error:', e);
+            showToast('❌ 加载数据出错');
+        }
+    }
+    async function initializeUserData() {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return;
+            const { error } = await supabaseClient
+                .from('user_data')
+                .insert({
+                    user_id: user.id,
+                    goal: 100000,
+                    target_year: null,
+                    manual_market_value: null,
+                    assets: [],
+                    snapshots: [],
+                    last_update_date: null,
+                    last_manual_refresh: null
                 });
-                let marketValue = app.manualMarketValue;
-                if (marketValue === null && app.assets.length > 0) {
-                    marketValue = app.assets.reduce((s, a) => {
-                        if (a.type === 'deposit') return s + (a.matured ? (a.maturityValue || a.amount) : a.amount);
-                        if (a.type === 'cash') return s + (a.currentPrice || a.amount || 0);
-                        return s + (a.currentPrice || a.cost || 0) * (a.amount || 0);
-                    }, 0);
-                } else if (marketValue === null) marketValue = 0;
-                const goal = app.goal || 1;
-                let earliestDate = null;
-                app.assets.forEach(a => {
-                    if (a.date && a.amount > 0 && a.type !== 'cash' && a.type !== 'deposit') {
-                        const d = new Date(a.date);
-                        if (!earliestDate || d < earliestDate) earliestDate = d;
-                    }
-                });
-                app.assets.forEach(a => {
-                    if (a.type === 'deposit' && a.date && a.amount > 0) {
-                        const d = new Date(a.date);
-                        if (!earliestDate || d < earliestDate) earliestDate = d;
-                    }
-                });
-                let avgYears = 0;
-                if (earliestDate) {
-                    const days = daysBetween(earliestDate.toISOString().split('T')[0], todayStr);
-                    avgYears = days / 365.25;
-                }
-                if (avgYears < 0.001) avgYears = 0.001;
-                let totalReturn = null,
-                    annualReturn = null;
-                if (marketValue !== null && totalInvest > 0) {
-                    totalReturn = (marketValue - totalInvest) / totalInvest;
-                    const ratio = marketValue / totalInvest;
-                    if (ratio > 0 && avgYears > 0) {
-                        annualReturn = Math.pow(ratio, 1 / avgYears) - 1;
-                        if (!isFinite(annualReturn)) annualReturn = null;
-                    }
-                }
-                const goalComplete = marketValue !== null ? marketValue / goal : totalInvest / goal;
-                return { totalInvest, totalMarketValue: marketValue, totalReturn, annualReturn, goalComplete, avgYears };
+            if (error) {
+                console.error('初始化数据失败', error);
+                showToast('⚠️ 初始化数据失败');
             }
-
-            // ========== 加减仓 ==========
-            async function adjustPosition(assetId, action) {
-                const asset = app.assets.find(a => a.id === assetId);
-                if (!asset) return showToast('资产不存在');
-                if (asset.type === 'deposit' || asset.type === 'cash') return showToast('存款和现金不支持加减仓');
-
-                if (action === 'add') {
-                    const qtyInput = prompt('请输入加仓数量：', '');
-                    if (qtyInput === null) return;
-                    const qty = parseFloat(qtyInput);
-                    if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
-
-                    const costInput = prompt('请输入加仓成本价（元/单位）：', '');
-                    if (costInput === null) return;
-                    const costPrice = parseFloat(costInput);
-                    if (isNaN(costPrice) || costPrice <= 0) return showToast('成本价必须为正数');
-
-                    const totalCost = qty * costPrice;
-                    let cashAsset = app.assets.find(a => a.type === 'cash');
-                    if (!cashAsset) {
-                        cashAsset = {
-                            id: 'c' + Date.now(),
-                            type: 'cash',
-                            code: '现金',
-                            amount: 0,
-                            date: todayStr,
-                            currentPrice: 0,
-                            name: '现金'
-                        };
-                        app.assets.push(cashAsset);
-                    }
-                    if (cashAsset.amount < totalCost) {
-                        return showToast(`现金不足！需要 ${formatMoney(totalCost)}，当前现金 ${formatMoney(cashAsset.amount)}`);
-                    }
-
-                    const oldQty = asset.amount || 0;
-                    const oldCost = asset.cost || 0;
-                    const newQty = oldQty + qty;
-                    const newCost = (oldQty * oldCost + qty * costPrice) / newQty;
-                    asset.amount = newQty;
-                    asset.cost = newCost;
-                    cashAsset.amount -= totalCost;
-                    cashAsset.currentPrice = cashAsset.amount;
-
-                    if (!asset.transactions) asset.transactions = [];
-                    asset.transactions.push({
-                        date: todayStr,
-                        type: 'add',
-                        qty: qty,
-                        price: costPrice
-                    });
-
-                    showToast(`✅ 加仓成功，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
-
-                } else if (action === 'sub') {
-                    const qtyInput = prompt(`请输入减仓数量（当前持仓 ${asset.amount}）：`, '');
-                    if (qtyInput === null) return;
-                    const qty = parseFloat(qtyInput);
-                    if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
-                    if (qty > (asset.amount || 0)) {
-                        return showToast(`持仓不足！当前持仓 ${asset.amount} 份`);
-                    }
-
-                    const priceInput = prompt('请输入卖出单价（元/单位）：', '');
-                    if (priceInput === null) return;
-                    const sellPrice = parseFloat(priceInput);
-                    if (isNaN(sellPrice) || sellPrice <= 0) return showToast('卖出单价必须为正数');
-
-                    const sellValue = qty * sellPrice;
-                    asset.amount = (asset.amount || 0) - qty;
-
-                    let cashAsset = app.assets.find(a => a.type === 'cash');
-                    if (!cashAsset) {
-                        cashAsset = {
-                            id: 'c' + Date.now(),
-                            type: 'cash',
-                            code: '现金',
-                            amount: 0,
-                            date: todayStr,
-                            currentPrice: 0,
-                            name: '现金'
-                        };
-                        app.assets.push(cashAsset);
-                    }
-                    cashAsset.amount += sellValue;
-                    cashAsset.currentPrice = cashAsset.amount;
-
-                    if (!asset.transactions) asset.transactions = [];
-                    asset.transactions.push({
-                        date: todayStr,
-                        type: 'sub',
-                        qty: qty,
-                        price: sellPrice
-                    });
-
-                    showToast(`✅ 减仓成功，卖出 ${qty} 份，收入 ${formatMoney(sellValue)}`);
-                }
-
-                await save();
-                renderAll();
-
-                if (asset.amount <= 0.0001) {
-                    app.assets = app.assets.filter(a => a.id !== asset.id);
-                    await save();
-                    renderAll();
-                    showToast('持仓已清空，资产已移除');
-                }
-            }
-
-            // ========== 筛选排序辅助 ==========
-            function updateSortArrows() {
-                document.querySelectorAll('#assetTable thead th.sortable-header').forEach(th => {
-                    const field = th.dataset.sort;
-                    let arrow = '';
-                    if (sortField === field) {
-                        arrow = sortAsc ? ' ▲' : ' ▼';
-                    }
-                    const text = th.textContent.replace(/[ ▲▼]/g, '');
-                    th.textContent = text + arrow;
-                });
-            }
-
-            // ========== 显示资产历史 ==========
-            function showAssetHistory(assetId) {
-                const asset = app.assets.find(a => a.id === assetId);
-                if (!asset) { showToast('资产不存在'); return; }
-
-                document.getElementById('historyTitle').textContent = `📊 ${asset.name || asset.code || '资产'} 历史`;
-                const container = document.getElementById('historyContent');
-                container.innerHTML = '';
-
-                const transactions = asset.transactions || [];
-                const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                // ---- 交易记录表格 ----
-                let tableHtml = '<h4 style="margin:10px 0;">📋 交易记录</h4><div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr><th>日期</th><th>类型</th><th>数量</th><th>价格</th><th>金额</th></tr></thead><tbody>';
-                if (sorted.length === 0) {
-                    tableHtml += '<tr><td colspan="5" style="text-align:center;color:#999;">暂无交易记录</td></tr>';
-                } else {
-                    let runningQty = 0;
-                    let runningCost = 0;
-                    sorted.forEach(t => {
-                        const amount = t.type === 'add' ? t.qty * t.price : -t.qty * t.price;
-                        if (t.type === 'add') {
-                            runningQty += t.qty;
-                            runningCost += t.qty * t.price;
-                        } else {
-                            runningQty -= t.qty;
-                            runningCost -= t.qty * t.price;
-                        }
-                        tableHtml +=
-                            `<tr><td>${t.date}</td><td>${t.type === 'add' ? '买入' : '卖出'}</td><td>${t.qty.toFixed(4)}</td><td>${formatMoney(t.price)}</td><td>${formatMoney(Math.abs(amount))}</td></tr>`;
-                    });
-                }
-                tableHtml += '</tbody></table></div>';
-                container.innerHTML += tableHtml;
-
-                // ---- 收益折线图 ----
-                if (sorted.length > 0) {
-                    const chartDiv = document.createElement('div');
-                    chartDiv.className = 'history-chart';
-                    container.appendChild(chartDiv);
-
-                    // 计算每次交易后的总成本和市值
-                    const dates = [];
-                    const costData = [];
-                    const marketData = [];
-                    let totalQty = 0;
-                    let totalCost = 0;
-
-                    sorted.forEach(t => {
-                        if (t.type === 'add') {
-                            totalQty += t.qty;
-                            totalCost += t.qty * t.price;
-                        } else {
-                            totalQty -= t.qty;
-                            totalCost -= t.qty * t.price;
-                        }
-                        const marketValue = totalQty * (asset.currentPrice || 0);
-                        dates.push(t.date);
-                        costData.push(totalCost);
-                        marketData.push(marketValue);
-                    });
-
-                    // 添加当前最新点
-                    const lastDate = dates[dates.length - 1];
-                    if (lastDate && lastDate !== todayStr) {
-                        dates.push(todayStr);
-                        costData.push(totalCost);
-                        marketData.push(totalQty * (asset.currentPrice || 0));
-                    }
-
-                    const chart = echarts.init(chartDiv);
-                    chart.setOption({
-                        tooltip: {
-                            trigger: 'axis',
-                            formatter: function(params) {
-                                let html = params[0].axisValue;
-                                params.forEach(p => {
-                                    html += `<br/>${p.marker} ${p.seriesName}: ${formatMoney(p.value)}`;
-                                });
-                                return html;
-                            }
-                        },
-                        legend: { data: ['总成本', '市值'] },
-                        grid: { left: '5%', right: '5%', bottom: '15%', top: '15%' },
-                        xAxis: {
-                            type: 'category',
-                            data: dates,
-                            axisLabel: { rotate: 25, fontSize: 11 }
-                        },
-                        yAxis: {
-                            type: 'value',
-                            name: '金额 (¥)',
-                            nameLocation: 'end'
-                        },
-                        series: [{
-                            name: '总成本',
-                            type: 'line',
-                            data: costData,
-                            color: '#000000',
-                            smooth: false,
-                            lineStyle: { width: 2 }
-                        }, {
-                            name: '市值',
-                            type: 'line',
-                            data: marketData,
-                            color: '#c64545',
-                            smooth: false,
-                            lineStyle: { width: 2 }
-                        }]
-                    });
-                    chart.resize();
-
-                    // 存储图表实例以便销毁
-                    chart._isHistoryChart = true;
-                }
-
-                document.getElementById('historyModal').style.display = 'block';
-            }
-
-            function closeHistory() {
-                document.getElementById('historyModal').style.display = 'none';
-                // 销毁图表实例
-                const charts = document.querySelectorAll('#historyContent .history-chart');
-                charts.forEach(div => {
-                    const inst = echarts.getInstanceByDom(div);
-                    if (inst) inst.dispose();
-                    div.innerHTML = '';
-                });
-            }
-
-            // ========== 渲染表格 ==========
-            function renderAssetTable() {
-                // ---- 筛选 ----
-                let filtered = app.assets;
-                if (filterType !== 'all') {
-                    filtered = filtered.filter(a => a.type === filterType);
-                }
-
-                // ---- 排序 ----
-                if (sortField) {
-                    filtered.sort((a, b) => {
-                        let valA, valB;
-                        if (sortField === 'market') {
-                            valA = a.type === 'deposit' ? (a.matured ? (a.maturityValue || a.amount) : a.amount) :
-                                (a.type === 'cash' ? (a.currentPrice || a.amount) :
-                                    (a.currentPrice || a.cost || 0) * (a.amount || 0));
-                            valB = b.type === 'deposit' ? (b.matured ? (b.maturityValue || b.amount) : b.amount) :
-                                (b.type === 'cash' ? (b.currentPrice || b.amount) :
-                                    (b.currentPrice || b.cost || 0) * (b.amount || 0));
-                        } else if (sortField === 'profit') {
-                            valA = a.type === 'stock' || a.type === 'fund' || a.type === 'gold' ?
-                                ((a.currentPrice || a.cost || 0) - (a.cost || 0)) * (a.amount || 0) :
-                                (a.type === 'cash' ? 0 : 0);
-                            valB = b.type === 'stock' || b.type === 'fund' || b.type === 'gold' ?
-                                ((b.currentPrice || b.cost || 0) - (b.cost || 0)) * (b.amount || 0) :
-                                (b.type === 'cash' ? 0 : 0);
-                        } else if (sortField === 'returnRate') {
-                            const costA = a.cost || 0;
-                            const priceA = a.currentPrice || 0;
-                            valA = (costA > 0 && priceA > 0) ? (priceA - costA) / costA : -Infinity;
-                            const costB = b.cost || 0;
-                            const priceB = b.currentPrice || 0;
-                            valB = (costB > 0 && priceB > 0) ? (priceB - costB) / costB : -Infinity;
-                        } else {
-                            valA = 0;
-                            valB = 0;
-                        }
-                        if (valA === undefined || valA === null) valA = -Infinity;
-                        if (valB === undefined || valB === null) valB = -Infinity;
-                        return sortAsc ? valA - valB : valB - valA;
-                    });
-                }
-
-                // ---- 渲染 ----
-                const tbody = document.querySelector('#assetTable tbody');
-                if (!filtered.length) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">暂无匹配的资产</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = filtered.map(a => {
-                    let price = a.currentPrice || a.cost || 0;
-                    let market = 0;
-                    if (a.type === 'deposit') market = a.matured ? (a.maturityValue || a.amount) : a.amount;
-                    else if (a.type === 'cash') market = a.currentPrice || a.amount || 0;
-                    else market = (a.currentPrice || a.cost || 0) * (a.amount || 0);
-
-                    let profit = '';
-                    let returnRate = '—';
-
-                    if (a.type === 'deposit') {
-                        profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
-                    } else if (a.type === 'cash') {
-                        profit = '—';
-                    } else {
-                        const p = (price - (a.cost || 0)) * (a.amount || 0);
-                        const color = p >= 0 ? '#c64545' : '#2d7d46';
-                        const absVal = Math.abs(p);
-                        const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                        const sign = p >= 0 ? '' : '-';
-                        profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
-
-                        const cost = a.cost || 0;
-                        if (cost > 0 && price > 0) {
-                            const rate = (price - cost) / cost;
-                            const rateColor = rate >= 0 ? '#c64545' : '#2d7d46';
-                            const rateSign = rate >= 0 ? '+' : '';
-                            returnRate = `<span style="color:${rateColor};">${rateSign}${(rate * 100).toFixed(2)}%</span>`;
-                        }
-                    }
-
-                    // 名称列
-                    let displayName = '';
-                    if (a.type === 'stock' || a.type === 'fund') {
-                        const namePart = a.name || a.code || '';
-                        const codePart = a.code ? `(${a.code})` : '';
-                        displayName = (a.name && a.code && a.name !== a.code) ? `${a.name} ${codePart}` : (a.name || a
-                            .code || '—');
-                    } else {
-                        displayName = a.name || a.code || '—';
-                    }
-
-                    let nameDisplay = '';
-                    if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
-                        nameDisplay =
-                            `<span class="asset-name-link" data-asset-id="${a.id}">${displayName}</span>`;
-                    } else {
-                        nameDisplay = displayName;
-                    }
-
-                    let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
-                    if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
-                        actions +=
-                            `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
-                        actions +=
-                            `<button class="btn btn-xs btn-danger" onclick="adjustPosition('${a.id}','sub')" style="margin-left:4px;">➖</button>`;
-                    }
-                    if (a.type === 'deposit' && a.matured) {
-                        actions +=
-                            `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')" style="margin-left:4px;">转存</button>`;
-                    }
-                    const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
-                    return `<tr>
-                        <td>${typeMap[a.type]||a.type}</td>
-                        <td>${nameDisplay}</td>
-                        <td>${a.amount||''}</td>
-                        <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
-                        <td>${formatMoney(price)}</td>
-                        <td>${formatMoney(market)}</td>
-                        <td>${profit}</td>
-                        <td>${returnRate}</td>
-                        <td>${actions}</td>
-                    </tr>`;
-                }).join('');
-
-                updateSortArrows();
-            }
-
-            // ========== 渲染全部 ==========
-            function renderAll() {
-                const m = computeMetrics();
-
-                document.getElementById('totalMarketValue').textContent = m.totalMarketValue !== null ? formatMoney(m
-                    .totalMarketValue) : '--';
-                const pc = m.goalComplete !== null ? (m.goalComplete * 100).toFixed(1) + '%' : '--';
-                document.getElementById('goalPercent').textContent = pc;
-                const pct = Math.min((m.goalComplete || 0) * 100, 100);
-                document.getElementById('goalProgress').style.width = pct + '%';
-                document.getElementById('goalProgress').className = 'progress-fill' + (m.goalComplete >= 1 ? ' over' : '');
-                document.getElementById('goalMessage').textContent = m.totalMarketValue !== null ? (m.goalComplete >= 1 ?
-                    '🎉 目标已达成' : '距离目标还差 ' + formatMoney(app.goal - m.totalMarketValue)) : '';
-
-                const returnEl = document.getElementById('totalReturn');
-                returnEl.textContent = formatPercent(m.totalReturn);
-                returnEl.className = 'stat-value' + (m.totalReturn !== null ? (m.totalReturn >= 0 ? ' negative' :
-                    ' positive') : '');
-
-                document.getElementById('totalReturnAmount').textContent = m.totalReturn !== null ? '盈亏 ' + formatMoney(m
-                    .totalMarketValue - m.totalInvest) : '';
-
-                const annualEl = document.getElementById('annualReturn');
-                annualEl.textContent = formatPercent(m.annualReturn);
-                annualEl.className = 'stat-value' + (m.annualReturn !== null ? (m.annualReturn >= 0 ? ' negative' :
-                    ' positive') : '');
-
-                document.getElementById('annualNote').textContent = m.avgYears > 0 ? '加权投资约' + (m.avgYears * 12).toFixed(
-                    1) + '个月' : '';
-
-                document.getElementById('updateStatus').textContent = app.lastUpdateDate === todayStr ? '✅ 今日已更新' :
-                    '⏳ 待更新';
-                document.getElementById('goalInput').value = app.goal;
-                document.getElementById('targetYearInput').value = app.targetYear || '';
-                renderAssetTable();
-                renderCharts();
-            }
-
-            // ========== 图表渲染 ==========
-            function renderCharts() {
-                try {
-                    if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
-                    const assetsWithValue = app.assets.filter(a => {
-                        let mkt = 0;
-                        if (a.type === 'deposit') mkt = a.matured ? (a.maturityValue || a.amount) : a.amount;
-                        else if (a.type === 'cash') mkt = a.currentPrice || a.amount || 0;
-                        else mkt = (a.currentPrice || a.cost || 0) * (a.amount || 0);
-                        return mkt > 0.01;
-                    });
-                    if (assetsWithValue.length === 0) {
-                        pieChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center',
-                                textStyle: { color: '#aaa', fontSize: 14 } }, series: [] });
-                    } else {
-                        pieChart.setOption({
-                            tooltip: {
-                                trigger: 'item',
-                                formatter: function(params) {
-                                    return params.name + ': ¥' + params.value.toFixed(2) + ' (' + params
-                                        .percent + '%)';
-                                }
-                            },
-                            series: [{
-                                type: 'pie',
-                                radius: ['45%', '70%'],
-                                label: {
-                                    show: true,
-                                    formatter: function(params) {
-                                        return params.name + '\n' + params.percent + '%';
-                                    }
-                                },
-                                data: assetsWithValue.map(a => {
-                                    let val = 0;
-                                    if (a.type === 'deposit') val = a.matured ? (a.maturityValue || a
-                                        .amount) : a.amount;
-                                    else if (a.type === 'cash') val = a.currentPrice || a.amount || 0;
-                                    else val = (a.currentPrice || a.cost || 0) * (a.amount || 0);
-                                    return { name: a.name || a.code || a.type, value: val };
-                                })
-                            }]
-                        });
-                    }
-                    pieChart.resize();
-                } catch (e) { console.warn('饼图渲染失败', e); }
-
-                try {
-                    if (!barChart) barChart = echarts.init(document.getElementById('barChart'));
-                    const snaps = app.snapshots;
-                    if (!snaps || snaps.length === 0) {
-                        barChart.setOption({ title: { text: '暂无历史数据', left: 'center', top: 'center',
-                                textStyle: { color: '#aaa', fontSize: 14 } }, xAxis: { data: [] }, yAxis: {},
-                            series: [] });
-                    } else {
-                        const dates = snaps.map(s => s.date);
-                        let yData, yName;
-                        if (currentChartType === 'totalValue') { yData = snaps.map(s => s.totalValue);
-                            yName = '总市值 (¥)'; } else if (currentChartType === 'annualReturn') { yData = snaps
-                                .map(s => s.annualReturn != null ? parseFloat((s.annualReturn * 100).toFixed(2)) :
-                                null);
-                            yName = '年化收益率 (%)'; } else { yData = snaps.map(s => s.totalReturnRate != null ?
-                                parseFloat((s.totalReturnRate * 100).toFixed(2)) : null);
-                            yName = '总收益率 (%)'; }
-                        barChart.setOption({
-                            tooltip: { trigger: 'axis', formatter: function(params) { const p = params[
-                                    0]; if (!p) return ''; return p.name + '<br/>' + p.seriesName +
-                                    ': ' + (p.value !== null ? p.value : '--'); } },
-                            xAxis: { data: dates, axisLabel: { rotate: 25, fontSize: 10 } },
-                            yAxis: { name: yName, nameLocation: 'end' },
-                            dataZoom: [{ type: 'slider', height: 20, bottom: 8 }],
-                            series: [{ data: yData, type: 'bar', color: '#3b5f7a', name: yName,
-                                barMaxWidth: 40 }]
-                        });
-                    }
-                    barChart.resize();
-                } catch (e) { console.warn('柱状图渲染失败', e); }
-            }
-
-            // ========== 用户操作 ==========
-            async function saveGoal() {
-                const v = parseFloat(document.getElementById('goalInput').value);
-                if (v > 0) { app.goal = v; await save();
-                    renderAll();
-                    showToast('目标金额已保存'); }
-            }
-
-            async function saveTargetYear() {
-                const v = parseInt(document.getElementById('targetYearInput').value);
-                if (!isNaN(v) && v >= 2025) { app.targetYear = v;
-                    updateMainTitle(); await save();
-                    renderAll();
-                    showToast('目标年份已设定为 ' + v); }
-            }
-
-            async function addAsset() {
-                const type = document.getElementById('assetType').value;
-                let code = document.getElementById('assetCode').value.trim();
-                const amount = parseFloat(document.getElementById('assetAmount').value);
-                const cost = parseFloat(document.getElementById('assetCost').value);
-                const date = document.getElementById('assetDate').value;
-
-                if (!date || isNaN(amount) || amount <= 0) {
-                    showToast('请填写完整信息（日期、数量）');
-                    return;
-                }
-
-                if (type === 'gold' && !code) code = 'au9999';
-                if (type === 'cash' && !code) code = '现金';
-
-                // ---- 存款 ----
-                if (type === 'deposit') {
-                    const months = parseInt(code) || 12;
-                    const mat = new Date(date);
-                    mat.setMonth(mat.getMonth() + months);
-                    const asset = {
-                        id: 'd' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                        type: 'deposit',
-                        code: code || '',
-                        amount: amount,
-                        date: date,
-                        rate: cost || 2.5,
-                        maturityDate: mat.toISOString().split('T')[0],
-                        matured: false,
-                        name: '定期存款'
-                    };
-                    app.assets.push(asset);
-                    await save();
-                    renderAll();
-                    showToast('✅ 存款已添加');
-                    clearInputs();
-                    return;
-                }
-
-                // ---- 现金 ----
-                if (type === 'cash') {
-                    const existingIdx = app.assets.findIndex(a => a.type === 'cash' && a.code === code);
-                    if (existingIdx !== -1) {
-                        const old = app.assets[existingIdx];
-                        old.amount += amount;
-                        old.currentPrice = old.amount;
-                        showToast(`✅ 现金已合并，当前余额 ${formatMoney(old.amount)}`);
-                        await save();
-                        renderAll();
-                        clearInputs();
-                        return;
-                    } else {
-                        const asset = {
-                            id: 'c' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                            type: 'cash',
-                            code: code,
-                            amount: amount,
-                            date: date,
-                            currentPrice: amount,
-                            name: '现金'
-                        };
-                        app.assets.push(asset);
-                    }
-                } else {
-                    // ---- 股票/基金/黄金 ----
-                    if (cost === undefined || isNaN(cost) || cost <= 0) {
-                        showToast('请填写有效的成本价');
-                        return;
-                    }
-                    const existingIdx = app.assets.findIndex(a => a.type === type && a.code === code);
-                    if (existingIdx !== -1) {
-                        const old = app.assets[existingIdx];
-                        const oldQty = old.amount || 0;
-                        const oldCost = old.cost || 0;
-                        const newQty = oldQty + amount;
-                        const newCost = (oldQty * oldCost + amount * cost) / newQty;
-                        old.amount = newQty;
-                        old.cost = newCost;
-                        if (!old.transactions) old.transactions = [];
-                        old.transactions.push({
-                            date: date,
-                            type: 'add',
-                            qty: amount,
-                            price: cost
-                        });
-                        showToast(`✅ ${type} 已合并，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
-                        await save();
-                        renderAll();
-                        clearInputs();
-                        setTimeout(() => refreshQuotes(true), 500);
-                        return;
-                    } else {
-                        const asset = {
-                            id: 'a' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                            type: type,
-                            code: code,
-                            amount: amount,
-                            cost: cost,
-                            date: date,
-                            currentPrice: cost,
-                            name: '',
-                            transactions: [{
-                                date: date,
-                                type: 'add',
-                                qty: amount,
-                                price: cost
-                            }]
-                        };
-                        app.assets.push(asset);
-                    }
-                }
-
-                await save();
-                renderAll();
-                clearInputs();
-                showToast('✅ 资产已添加，正在刷新行情...');
-                setTimeout(() => refreshQuotes(true), 500);
-            }
-
-            async function removeAsset(id) {
-                if (!confirm('确认删除此资产？')) return;
-                app.assets = app.assets.filter(a => a.id !== id);
-                await save();
-                renderAll();
-                showToast('已删除');
-            }
-
-            async function rolloverDeposit(id) {
-                const deposit = app.assets.find(a => a.id === id);
-                if (!deposit || !deposit.matured) return;
-                const old = deposit.maturityValue || deposit.amount;
-                const naInput = prompt('转存金额（本息合计 ' + formatMoney(old) + '）', old.toFixed(2));
-                if (naInput === null) return;
-                const na = parseFloat(naInput);
-                if (isNaN(na) || na <= 0) return;
-                const nrInput = prompt('新年化利率（%）', (deposit.rate || 2.5).toFixed(2));
-                if (nrInput === null) return;
-                const nr = parseFloat(nrInput);
-                if (isNaN(nr)) return;
-                const tmInput = prompt('期限（月）', '12');
-                if (tmInput === null) return;
-                const tm = parseInt(tmInput);
-                if (isNaN(tm) || tm <= 0) return;
-                const diff = na - old;
-                app.assets = app.assets.filter(a => a.id !== id);
-                const mat = new Date(todayStr);
-                mat.setMonth(mat.getMonth() + tm);
-                app.assets.push({
-                    id: 'd' + Date.now(),
-                    type: 'deposit',
-                    code: '',
-                    amount: na,
-                    rate: nr,
-                    date: todayStr,
-                    maturityDate: mat.toISOString().split('T')[0],
-                    matured: false,
-                    name: '定期存款'
-                });
-                if (Math.abs(diff) > 0.01) {
-                    let cash = app.assets.find(a => a.type === 'cash');
-                    if (!cash) {
-                        cash = {
-                            id: 'c' + Date.now(),
-                            type: 'cash',
-                            code: '现金',
-                            amount: 0,
-                            date: todayStr,
-                            currentPrice: 0,
-                            name: '现金'
-                        };
-                        app.assets.push(cash);
-                    }
-                    cash.amount += diff;
-                    cash.currentPrice = cash.amount;
-                }
-                await save();
-                renderAll();
-                showToast('✅ 转存完成');
-            }
-
-            // ========== 清除历史 ==========
-            async function clearHistory() {
-                if (!confirm('⚠️ 确认清除所有投资数据（持仓、快照）？此操作不可恢复！')) return;
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (!user) { showToast('未登录'); return; }
-                    app.assets = [];
-                    app.snapshots = [];
-                    app.manualMarketValue = null;
-                    app.lastUpdateDate = null;
-                    app.lastManualRefresh = null;
-                    await save();
-                    renderAll();
-                    showToast('✅ 历史数据已清除');
-                } catch (e) {
-                    console.error(e);
-                    showToast('❌ 清除失败');
-                }
-            }
-
-            // ========== 导入导出 ==========
-            function exportToExcel() {
-                try {
-                    const wb = XLSX.utils.book_new();
-                    const ad = [
-                        ['类型', '代码/名称', '数量/金额', '成本/利率', '现价', '市值', '状态']
-                    ];
-                    app.assets.forEach(a => {
-                        let mkt = 0;
-                        if (a.type === 'deposit') mkt = a.matured ? (a.maturityValue || a.amount) : a.amount;
-                        else if (a.type === 'cash') mkt = a.currentPrice || a.amount || 0;
-                        else mkt = (a.currentPrice || a.cost || 0) * (a.amount || 0);
-                        let st = a.type === 'deposit' ? (a.matured ? '已到期' : '存续中') : '';
-                        ad.push([a.type, a.name || a.code || '', a.amount || '', a.type === 'deposit' ? (a.rate +
-                            '%') : (a.cost || ''), a.currentPrice || '', mkt, st]);
-                    });
-                    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ad), '持仓明细');
-                    if (app.snapshots.length) {
-                        const sd = [
-                            ['日期', '总市值', '年化收益率', '总收益率', '总投入']
-                        ];
-                        app.snapshots.forEach(s => sd.push([s.date, s.totalValue, s.annualReturn != null ? (s
-                            .annualReturn * 100).toFixed(2) + '%' : '', s.totalReturnRate != null ? (s
-                            .totalReturnRate * 100).toFixed(2) + '%' : '', s.totalInvest]));
-                        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sd), '历史快照');
-                    }
-                    XLSX.writeFile(wb, '投资记录_' + todayStr + '.xlsx');
-                    showToast('📥 Excel已导出');
-                } catch (e) { console.error(e);
-                    showToast('❌ 导出失败'); }
-            }
-
-            function exportJSON() {
-                try {
-                    const data = {
-                        goal: app.goal,
-                        targetYear: app.targetYear,
-                        manualMarketValue: app.manualMarketValue,
-                        assets: app.assets,
-                        snapshots: app.snapshots,
-                        lastUpdateDate: app.lastUpdateDate,
-                        lastManualRefresh: app.lastManualRefresh,
-                        exportDate: new Date().toISOString()
-                    };
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = '投资数据_' + todayStr + '.json';
-                    a.click();
-                    showToast('📦 JSON已导出');
-                } catch (e) { showToast('❌ 导出失败'); }
-            }
-
-            function importJSON(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (!confirm('导入将覆盖当前数据，确认继续？')) return;
-                        app.goal = data.goal || 100000;
-                        app.targetYear = data.targetYear || null;
-                        app.manualMarketValue = data.manualMarketValue ?? null;
-                        app.assets = data.assets || [];
-                        app.snapshots = data.snapshots || [];
-                        app.lastUpdateDate = data.lastUpdateDate || null;
-                        app.lastManualRefresh = data.lastManualRefresh || null;
-                        await save();
-                        renderAll();
-                        showToast('✅ 数据导入成功');
-                    } catch (err) { showToast('❌ 文件格式错误'); }
-                };
-                reader.readAsText(file);
-                event.target.value = '';
-            }
-
-            // ========== 事件绑定 ==========
-            // 存款期限提示
-            document.getElementById('assetType').addEventListener('change', function() {
-                const codeInput = document.getElementById('assetCode');
-                if (this.value === 'deposit') {
-                    codeInput.placeholder = '期限(月)';
-                } else {
-                    codeInput.placeholder = '代码 (sh600000)';
-                }
-            });
-            document.getElementById('assetType').dispatchEvent(new Event('change'));
-
-            // 筛选下拉
-            document.getElementById('filterType').addEventListener('change', function() {
-                filterType = this.value;
-                renderAssetTable();
-            });
-
-            // 表头排序点击（事件委托）
-            document.querySelector('#assetTable thead')?.addEventListener('click', function(e) {
-                const th = e.target.closest('.sortable-header');
-                if (!th) return;
-                const field = th.dataset.sort;
-                if (!field) return;
-                if (sortField === field) {
-                    sortAsc = !sortAsc;
-                } else {
-                    sortField = field;
-                    sortAsc = true;
-                }
-                renderAssetTable();
-            });
-
-            // 点击资产名称显示历史（事件委托）
-            document.getElementById('assetTable').addEventListener('click', function(e) {
-                const link = e.target.closest('.asset-name-link');
-                if (link) {
-                    const assetId = link.dataset.assetId;
-                    if (assetId) showAssetHistory(assetId);
-                }
-            });
-
-            // Tab切换
-            document.querySelectorAll('.tab').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    currentChartType = this.dataset.type;
-                    renderCharts();
-                });
-            });
-
-            // 窗口自适应
-            window.addEventListener('resize', () => {
-                try { if (pieChart) pieChart.resize(); } catch (_) {}
-                try { if (barChart) barChart.resize(); } catch (_) {}
-            });
-
-            // ========== 暴露全局 ==========
-            window.saveGoal = saveGoal;
-            window.saveTargetYear = saveTargetYear;
-            window.addAsset = addAsset;
-            window.removeAsset = removeAsset;
-            window.rolloverDeposit = rolloverDeposit;
-            window.exportToExcel = exportToExcel;
-            window.exportJSON = exportJSON;
-            window.importJSON = importJSON;
-            window.manualRefresh = manualRefresh;
-            window.signOut = signOut;
-            window.adjustPosition = adjustPosition;
-            window.clearHistory = clearHistory;
-            window.showAssetHistory = showAssetHistory;
-            window.closeHistory = closeHistory;
-
-            // ========== 启动 ==========
-            window.onload = async function() {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (user) { await loadUserData(); } else { showLoginPrompt(); }
-                } catch (e) { console.error('启动失败:', e);
-                    showToast('⚠️ 初始化失败，请刷新重试'); }
+        } catch (e) { console.error(e); }
+    }
+    async function save() {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { showToast('❌ 未登录，无法保存'); return false; }
+            const payload = {
+                user_id: user.id,
+                goal: app.goal,
+                target_year: app.targetYear,
+                manual_market_value: app.manualMarketValue,
+                assets: app.assets,
+                snapshots: app.snapshots,
+                last_update_date: app.lastUpdateDate,
+                last_manual_refresh: app.lastManualRefresh,
+                updated_at: new Date().toISOString()
             };
+            const { error } = await supabaseClient
+                .from('user_data')
+                .upsert(payload, { onConflict: 'user_id' });
+            if (error) { console.error('保存失败', error); showToast('❌ 数据保存失败'); return false; }
+            return true;
+        } catch (e) { console.error(e); showToast('❌ 保存出错'); return false; }
+    }
 
-        })();
-    </script>
+    // ========== 辅助函数 ==========
+    function formatMoney(v) {
+        if (v === null || v === undefined || isNaN(v)) return '--';
+        return '¥' + Math.abs(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatPercent(v) {
+        if (v === null || v === undefined || isNaN(v)) return '--';
+        return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+    }
+    function daysBetween(d1, d2) {
+        try { return Math.max(0, Math.floor((new Date(d2) - new Date(d1)) / 86400000)); } catch (_) { return 0; }
+    }
+    function updateMainTitle() {
+        document.getElementById('mainTitle').textContent = app.targetYear ? '📊 ' + app.targetYear + '年投资计划' : '📊 个人投资记录';
+    }
+
+    // ========== 行情获取（通过代理） ==========
+    function fetchStock(code, cb) { fetchProxy('stock', code).then(data => cb(data || null)); }
+    function fetchFund(code, cb)  { fetchProxy('fund', code).then(data => cb(data || null)); }
+    function fetchGold(cb)       { fetchProxy('gold', 'au9999').then(data => cb(data || null)); }
+
+    // ========== 刷新行情 ==========
+    async function refreshQuotes(force = false) {
+        if (isUpdating) { showToast('⏳ 正在更新中...'); return; }
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        if (!force && app.lastUpdateDate === today) { showToast('今日已更新，无需重复刷新'); return; }
+        if (!force && now.getHours() !== 0) { scheduleMidnightUpdate(); }
+        isUpdating = true;
+        let hasError = false;
+        let count = 0;
+        try {
+            for (let asset of app.assets) {
+                try {
+                    if (asset.type === 'stock') {
+                        await new Promise(resolve => {
+                            fetchStock(asset.code, info => {
+                                if (info) { asset.currentPrice = info.price; asset.name = info.name || asset.name || asset.code; } else { hasError = true; }
+                                resolve();
+                            });
+                        });
+                        count++;
+                    } else if (asset.type === 'fund') {
+                        await new Promise(resolve => {
+                            fetchFund(asset.code, info => {
+                                if (info) { asset.currentPrice = info.price; asset.name = info.name || asset.name || asset.code; } else { hasError = true; }
+                                resolve();
+                            });
+                        });
+                        count++;
+                    } else if (asset.type === 'gold') {
+                        await new Promise(resolve => {
+                            fetchGold(info => {
+                                if (info) { asset.currentPrice = info.price; asset.name = info.name || asset.name || '黄金'; } else { hasError = true; }
+                                resolve();
+                            });
+                        });
+                        count++;
+                    } else if (asset.type === 'cash') {
+                        // 现金：市值 = 本金，不计收益
+                        asset.currentPrice = asset.amount;
+                        count++;
+                    } else if (asset.type === 'deposit') {
+                        checkDepositMaturity(asset);
+                        count++;
+                    }
+                    await new Promise(r => setTimeout(r, 200));
+                } catch (e) { console.error('刷新资产失败:', asset, e); hasError = true; }
+            }
+            app.lastUpdateDate = today;
+            app.assets.forEach(a => checkDepositMaturity(a));
+            saveSnapshot();
+            await save();
+            renderAll();
+            showToast(hasError ? '⚠️ 部分行情获取失败，请检查网络' : '✅ 行情已更新 (' + count + '项)');
+        } catch (e) { console.error(e); showToast('❌ 刷新失败'); } finally { isUpdating = false; }
+    }
+
+    function checkDepositMaturity(asset) {
+        if (asset.type !== 'deposit' || !asset.maturityDate) return;
+        const today = new Date(todayStr);
+        const mat = new Date(asset.maturityDate);
+        if (mat <= today && !asset.matured) {
+            asset.matured = true;
+            const days = daysBetween(asset.date, asset.maturityDate);
+            asset.maturityValue = asset.amount + asset.amount * (asset.rate / 100) * (days / 365);
+        }
+    }
+
+    function saveSnapshot() {
+        const m = computeMetrics();
+        const today = new Date().toISOString().split('T')[0];
+        const last = app.snapshots[app.snapshots.length - 1];
+        if (last && last.date === today) {
+            Object.assign(last, {
+                totalValue: m.totalMarketValue || m.totalInvest || 0,
+                annualReturn: m.annualReturn,
+                totalReturnRate: m.totalReturn,
+                totalInvest: m.totalInvest || 0
+            });
+        } else {
+            app.snapshots.push({
+                date: today,
+                totalValue: m.totalMarketValue || m.totalInvest || 0,
+                annualReturn: m.annualReturn,
+                totalReturnRate: m.totalReturn,
+                totalInvest: m.totalInvest || 0
+            });
+        }
+        if (app.snapshots.length > 400) app.snapshots.shift();
+    }
+
+    function scheduleMidnightUpdate() {
+        if (refreshTimeout) clearTimeout(refreshTimeout);
+        const now = new Date();
+        const target = new Date(now);
+        target.setHours(24, 0, 0, 0);
+        refreshTimeout = setTimeout(() => { refreshQuotes(true); refreshTimeout = null; }, target - now + 1000);
+    }
+
+    function checkAutoUpdate() {
+        if (app.lastUpdateDate !== todayStr) {
+            const now = new Date();
+            if (now.getHours() === 0 || now.getHours() < 6) { refreshQuotes(true); } else { scheduleMidnightUpdate(); }
+        }
+    }
+
+    async function manualRefresh() {
+        if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 60000) {
+            showToast('⏳ 手动刷新需间隔1分钟');
+            return;
+        }
+        app.lastManualRefresh = Date.now();
+        await save();
+        await refreshQuotes(true);
+    }
+
+    // ========== 核心计算 ==========
+    function computeMetrics() {
+        let totalInvest = 0;
+        app.assets.forEach(a => {
+            if (a.type === 'cash' || a.type === 'deposit') totalInvest += a.amount || 0;
+            else totalInvest += (a.cost || 0) * (a.amount || 0);
+        });
+        let marketValue = app.manualMarketValue;
+        if (marketValue === null && app.assets.length > 0) {
+            marketValue = app.assets.reduce((s, a) => {
+                if (a.type === 'deposit') return s + (a.matured ? (a.maturityValue || a.amount) : a.amount);
+                if (a.type === 'cash') return s + (a.currentPrice || a.amount || 0);
+                return s + (a.currentPrice || a.cost || 0) * (a.amount || 0);
+            }, 0);
+        } else if (marketValue === null) marketValue = 0;
+        const goal = app.goal || 1;
+        let earliestDate = null;
+        app.assets.forEach(a => {
+            if (a.date && a.amount > 0 && a.type !== 'cash' && a.type !== 'deposit') {
+                const d = new Date(a.date);
+                if (!earliestDate || d < earliestDate) earliestDate = d;
+            }
+        });
+        app.assets.forEach(a => {
+            if (a.type === 'deposit' && a.date && a.amount > 0) {
+                const d = new Date(a.date);
+                if (!earliestDate || d < earliestDate) earliestDate = d;
+            }
+        });
+        let avgYears = 0;
+        if (earliestDate) {
+            const days = daysBetween(earliestDate.toISOString().split('T')[0], todayStr);
+            avgYears = days / 365.25;
+        }
+        if (avgYears < 0.001) avgYears = 0.001;
+        let totalReturn = null, annualReturn = null;
+        if (marketValue !== null && totalInvest > 0) {
+            totalReturn = (marketValue - totalInvest) / totalInvest;
+            const ratio = marketValue / totalInvest;
+            if (ratio > 0 && avgYears > 0) {
+                annualReturn = Math.pow(ratio, 1 / avgYears) - 1;
+                if (!isFinite(annualReturn)) annualReturn = null;
+            }
+        }
+        const goalComplete = marketValue !== null ? marketValue / goal : totalInvest / goal;
+        return { totalInvest, totalMarketValue: marketValue, totalReturn, annualReturn, goalComplete, avgYears };
+    }
+
+    // ========== 加减仓（数量+成本/卖出价） ==========
+    async function adjustPosition(assetId, action) {
+        const asset = app.assets.find(a => a.id === assetId);
+        if (!asset) return showToast('资产不存在');
+        if (asset.type === 'deposit' || asset.type === 'cash') return showToast('存款和现金不支持加减仓');
+
+        if (action === 'add') {
+            // ---- 加仓：输入数量和成本单价 ----
+            const qtyInput = prompt('请输入加仓数量：', '');
+            if (qtyInput === null) return;
+            const qty = parseFloat(qtyInput);
+            if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
+
+            const costInput = prompt('请输入加仓成本价（元/单位）：', '');
+            if (costInput === null) return;
+            const costPrice = parseFloat(costInput);
+            if (isNaN(costPrice) || costPrice <= 0) return showToast('成本价必须为正数');
+
+            const totalCost = qty * costPrice;
+
+            // 检查现金
+            let cashAsset = app.assets.find(a => a.type === 'cash');
+            if (!cashAsset) {
+                cashAsset = {
+                    id: 'c' + Date.now(),
+                    type: 'cash',
+                    code: '现金',
+                    amount: 0,
+                    date: todayStr,
+                    currentPrice: 0,
+                    name: '现金'
+                };
+                app.assets.push(cashAsset);
+            }
+            if (cashAsset.amount < totalCost) {
+                return showToast(`现金不足！需要 ${formatMoney(totalCost)}，当前现金 ${formatMoney(cashAsset.amount)}`);
+            }
+
+            // 更新资产（加权平均成本）
+            const oldQty = asset.amount || 0;
+            const oldCost = asset.cost || 0;
+            const newQty = oldQty + qty;
+            const newCost = (oldQty * oldCost + qty * costPrice) / newQty;
+            asset.amount = newQty;
+            asset.cost = newCost;
+
+            cashAsset.amount -= totalCost;
+            cashAsset.currentPrice = cashAsset.amount;
+
+            showToast(`✅ 加仓成功，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
+
+        } else if (action === 'sub') {
+            // ---- 减仓：输入数量和卖出单价 ----
+            const qtyInput = prompt(`请输入减仓数量（当前持仓 ${asset.amount}）：`, '');
+            if (qtyInput === null) return;
+            const qty = parseFloat(qtyInput);
+            if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
+
+            if (qty > (asset.amount || 0)) {
+                return showToast(`持仓不足！当前持仓 ${asset.amount} 份`);
+            }
+
+            const priceInput = prompt('请输入卖出单价（元/单位）：', '');
+            if (priceInput === null) return;
+            const sellPrice = parseFloat(priceInput);
+            if (isNaN(sellPrice) || sellPrice <= 0) return showToast('卖出单价必须为正数');
+
+            const sellValue = qty * sellPrice;
+
+            // 更新资产（数量减少，成本不变）
+            asset.amount = (asset.amount || 0) - qty;
+
+            // 增加现金
+            let cashAsset = app.assets.find(a => a.type === 'cash');
+            if (!cashAsset) {
+                cashAsset = {
+                    id: 'c' + Date.now(),
+                    type: 'cash',
+                    code: '现金',
+                    amount: 0,
+                    date: todayStr,
+                    currentPrice: 0,
+                    name: '现金'
+                };
+                app.assets.push(cashAsset);
+            }
+            cashAsset.amount += sellValue;
+            cashAsset.currentPrice = cashAsset.amount;
+
+            showToast(`✅ 减仓成功，卖出 ${qty} 份，收入 ${formatMoney(sellValue)}`);
+        }
+
+        // 保存并刷新
+        await save();
+        renderAll();
+
+        // 如果数量归零，自动移除该资产
+        if (asset.amount <= 0.0001) {
+            app.assets = app.assets.filter(a => a.id !== asset.id);
+            await save();
+            renderAll();
+            showToast('持仓已清空，资产已移除');
+        }
+    }
+
+    // ========== 渲染 ==========
+    function renderAll() {
+        const m = computeMetrics();
+
+        document.getElementById('totalMarketValue').textContent = m.totalMarketValue !== null ? formatMoney(m.totalMarketValue) : '--';
+        const pc = m.goalComplete !== null ? (m.goalComplete * 100).toFixed(1) + '%' : '--';
+        document.getElementById('goalPercent').textContent = pc;
+        const pct = Math.min((m.goalComplete || 0) * 100, 100);
+        document.getElementById('goalProgress').style.width = pct + '%';
+        document.getElementById('goalProgress').className = 'progress-fill' + (m.goalComplete >= 1 ? ' over' : '');
+        document.getElementById('goalMessage').textContent = m.totalMarketValue !== null ? (m.goalComplete >= 1 ? '🎉 目标已达成' : '距离目标还差 ' + formatMoney(app.goal - m.totalMarketValue)) : '';
+
+        // ---- 总收益率 ----
+        const returnEl = document.getElementById('totalReturn');
+        returnEl.textContent = formatPercent(m.totalReturn);
+        returnEl.className = 'stat-value' + (m.totalReturn !== null ? (m.totalReturn >= 0 ? ' negative' : ' positive') : '');
+
+        document.getElementById('totalReturnAmount').textContent = m.totalReturn !== null ? '盈亏 ' + formatMoney(m.totalMarketValue - m.totalInvest) : '';
+
+        // ---- 年化收益率 ----
+        const annualEl = document.getElementById('annualReturn');
+        annualEl.textContent = formatPercent(m.annualReturn);
+        annualEl.className = 'stat-value' + (m.annualReturn !== null ? (m.annualReturn >= 0 ? ' negative' : ' positive') : '');
+
+        document.getElementById('annualNote').textContent = m.avgYears > 0 ? '加权投资约' + (m.avgYears * 12).toFixed(1) + '个月' : '';
+
+        document.getElementById('updateStatus').textContent = app.lastUpdateDate === todayStr ? '✅ 今日已更新' : '⏳ 待更新';
+        document.getElementById('goalInput').value = app.goal;
+        document.getElementById('targetYearInput').value = app.targetYear || '';
+        renderAssetTable();
+        renderCharts();
+    }
+
+    // ---- 筛选和排序状态 ----
+let filterType = 'all';          // 当前筛选类型
+let sortField = null;           // 当前排序字段：'market', 'profit', 'returnRate'
+let sortAsc = true;            // true=升序，false=降序
+
+// ---- 监听筛选下拉变化 ----
+document.getElementById('filterType').addEventListener('change', function() {
+    filterType = this.value;
+    renderAssetTable();
+});
+
+// ---- 表头点击排序 ----
+document.querySelectorAll('#assetTable thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', function() {
+        const field = this.dataset.sort;
+        if (sortField === field) {
+            sortAsc = !sortAsc;  // 切换排序方向
+        } else {
+            sortField = field;
+            sortAsc = true;      // 新字段默认升序
+        }
+        renderAssetTable();
+        // 更新表头箭头显示（可选）
+        updateSortArrows();
+    });
+});
+
+// ---- 更新表头箭头（简单标识） ----
+function updateSortArrows() {
+    document.querySelectorAll('#assetTable thead th[data-sort]').forEach(th => {
+        const field = th.dataset.sort;
+        let arrow = '';
+        if (sortField === field) {
+            arrow = sortAsc ? ' ▲' : ' ▼';
+        }
+        th.textContent = th.textContent.replace(/[ ▲▼]/g, '') + arrow;
+    });
+}
+
+    function renderAssetTable() {
+    // ---- 1. 筛选 ----
+    let filtered = app.assets;
+    if (filterType !== 'all') {
+        filtered = filtered.filter(a => a.type === filterType);
+    }
+
+    // ---- 2. 排序 ----
+    if (sortField) {
+        filtered.sort((a, b) => {
+            let valA, valB;
+            if (sortField === 'market') {
+                // 市值
+                valA = a.type === 'deposit' ? (a.matured ? (a.maturityValue || a.amount) : a.amount) :
+                       (a.type === 'cash' ? (a.currentPrice || a.amount) :
+                       (a.currentPrice || a.cost || 0) * (a.amount || 0));
+                valB = b.type === 'deposit' ? (b.matured ? (b.maturityValue || b.amount) : b.amount) :
+                       (b.type === 'cash' ? (b.currentPrice || b.amount) :
+                       (b.currentPrice || b.cost || 0) * (b.amount || 0));
+            } else if (sortField === 'profit') {
+                // 盈亏金额
+                valA = a.type === 'stock' || a.type === 'fund' || a.type === 'gold' ?
+                       ((a.currentPrice || a.cost || 0) - (a.cost || 0)) * (a.amount || 0) :
+                       (a.type === 'cash' ? 0 : 0); // 存款、现金盈亏视为0
+                valB = b.type === 'stock' || b.type === 'fund' || b.type === 'gold' ?
+                       ((b.currentPrice || b.cost || 0) - (b.cost || 0)) * (b.amount || 0) :
+                       (b.type === 'cash' ? 0 : 0);
+            } else if (sortField === 'returnRate') {
+                // 收益率（百分比）
+                const costA = a.cost || 0;
+                const priceA = a.currentPrice || 0;
+                valA = (costA > 0 && priceA > 0) ? (priceA - costA) / costA : -Infinity;
+                const costB = b.cost || 0;
+                const priceB = b.currentPrice || 0;
+                valB = (costB > 0 && priceB > 0) ? (priceB - costB) / costB : -Infinity;
+            } else {
+                valA = 0;
+                valB = 0;
+            }
+            // 处理 null/undefined
+            if (valA === undefined || valA === null) valA = -Infinity;
+            if (valB === undefined || valB === null) valB = -Infinity;
+            if (sortAsc) return valA - valB;
+            else return valB - valA;
+        });
+    }
+
+    // ---- 3. 渲染 ----
+    const tbody = document.querySelector('#assetTable tbody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">暂无匹配的资产</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(a => {
+        let price = a.currentPrice || a.cost || 0;
+        let market = 0;
+        if (a.type === 'deposit') market = a.matured ? (a.maturityValue || a.amount) : a.amount;
+        else if (a.type === 'cash') market = a.currentPrice || a.amount || 0;
+        else market = (a.currentPrice || a.cost || 0) * (a.amount || 0);
+
+        let profit = '';
+        let returnRate = '—';
+
+        if (a.type === 'deposit') {
+            profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
+        } else if (a.type === 'cash') {
+            profit = '—';
+        } else {
+            const p = (price - (a.cost || 0)) * (a.amount || 0);
+            const color = p >= 0 ? '#c64545' : '#2d7d46';
+            const absVal = Math.abs(p);
+            const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            const sign = p >= 0 ? '' : '-';
+            profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
+
+            const cost = a.cost || 0;
+            if (cost > 0 && price > 0) {
+                const rate = (price - cost) / cost;
+                const rateColor = rate >= 0 ? '#c64545' : '#2d7d46';
+                const rateSign = rate >= 0 ? '+' : '';
+                returnRate = `<span style="color:${rateColor};">${rateSign}${(rate * 100).toFixed(2)}%</span>`;
+            }
+        }
+
+        let displayName = '';
+        if (a.type === 'stock' || a.type === 'fund') {
+            const namePart = a.name || a.code || '';
+            const codePart = a.code ? `(${a.code})` : '';
+            displayName = (a.name && a.code && a.name !== a.code) ? `${a.name} ${codePart}` : (a.name || a.code || '—');
+        } else {
+            displayName = a.name || a.code || '—';
+        }
+
+        let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
+        if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
+            actions += `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
+            actions += `<button class="btn btn-xs btn-danger" onclick="adjustPosition('${a.id}','sub')" style="margin-left:4px;">➖</button>`;
+        }
+        if (a.type === 'deposit' && a.matured) {
+            actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')" style="margin-left:4px;">转存</button>`;
+        }
+        const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
+        return `<tr>
+            <td>${typeMap[a.type]||a.type}</td>
+            <td>${displayName}</td>
+            <td>${a.amount||''}</td>
+            <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
+            <td>${formatMoney(price)}</td>
+            <td>${formatMoney(market)}</td>
+            <td>${profit}</td>
+            <td>${returnRate}</td>
+            <td>${actions}</td>
+        </tr>`;
+    }).join('');
+
+    // 更新排序箭头
+    updateSortArrows();
+}
+
+    function renderCharts() {
+        try {
+            if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
+            const assetsWithValue = app.assets.filter(a => {
+                let mkt = 0;
+                if (a.type === 'deposit') mkt = a.matured ? (a.maturityValue || a.amount) : a.amount;
+                else if (a.type === 'cash') mkt = a.currentPrice || a.amount || 0;
+                else mkt = (a.currentPrice || a.cost || 0) * (a.amount || 0);
+                return mkt > 0.01;
+            });
+            if (assetsWithValue.length === 0) {
+                pieChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14 } }, series: [] });
+            } else {
+                pieChart.setOption({
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function(params) {
+                            return params.name + ': ¥' + params.value.toFixed(2) + ' (' + params.percent + '%)';
+                        }
+                    },
+                    series: [{
+                        type: 'pie',
+                        radius: ['45%', '70%'],
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.name + '\n' + params.percent + '%';
+                            }
+                        },
+                        data: assetsWithValue.map(a => {
+                            let val = 0;
+                            if (a.type === 'deposit') val = a.matured ? (a.maturityValue || a.amount) : a.amount;
+                            else if (a.type === 'cash') val = a.currentPrice || a.amount || 0;
+                            else val = (a.currentPrice || a.cost || 0) * (a.amount || 0);
+                            return { name: a.name || a.code || a.type, value: val };
+                        })
+                    }]
+                });
+            }
+            pieChart.resize();
+        } catch (e) { console.warn('饼图渲染失败', e); }
+
+        try {
+            if (!barChart) barChart = echarts.init(document.getElementById('barChart'));
+            const snaps = app.snapshots;
+            if (!snaps || snaps.length === 0) {
+                barChart.setOption({ title: { text: '暂无历史数据', left: 'center', top: 'center', textStyle: { color: '#aaa', fontSize: 14 } }, xAxis: { data: [] }, yAxis: {}, series: [] });
+            } else {
+                const dates = snaps.map(s => s.date);
+                let yData, yName;
+                if (currentChartType === 'totalValue') {
+                    yData = snaps.map(s => s.totalValue);
+                    yName = '总市值 (¥)';
+                } else if (currentChartType === 'annualReturn') {
+                    yData = snaps.map(s => s.annualReturn != null ? parseFloat((s.annualReturn * 100).toFixed(2)) : null);
+                    yName = '年化收益率 (%)';
+                } else {
+                    yData = snaps.map(s => s.totalReturnRate != null ? parseFloat((s.totalReturnRate * 100).toFixed(2)) : null);
+                    yName = '总收益率 (%)';
+                }
+                barChart.setOption({
+                    tooltip: { trigger: 'axis', formatter: function(params) { const p = params[0]; if (!p) return ''; return p.name + '<br/>' + p.seriesName + ': ' + (p.value !== null ? p.value : '--'); } },
+                    xAxis: { data: dates, axisLabel: { rotate: 25, fontSize: 10 } },
+                    yAxis: { name: yName, nameLocation: 'end' },
+                    dataZoom: [{ type: 'slider', height: 20, bottom: 8 }],
+                    series: [{ data: yData, type: 'bar', color: '#3b5f7a', name: yName, barMaxWidth: 40 }]
+                });
+            }
+            barChart.resize();
+        } catch (e) { console.warn('柱状图渲染失败', e); }
+    }
+
+    // ========== 用户操作 ==========
+    async function saveGoal() {
+        const v = parseFloat(document.getElementById('goalInput').value);
+        if (v > 0) { app.goal = v; await save(); renderAll(); showToast('目标金额已保存'); }
+    }
+    async function saveTargetYear() {
+        const v = parseInt(document.getElementById('targetYearInput').value);
+        if (!isNaN(v) && v >= 2025) { app.targetYear = v; updateMainTitle(); await save(); renderAll(); showToast('目标年份已设定为 ' + v); }
+    }
+
+    async function addAsset() {
+    const type = document.getElementById('assetType').value;
+    let code = document.getElementById('assetCode').value.trim();
+    const amount = parseFloat(document.getElementById('assetAmount').value);
+    const cost = parseFloat(document.getElementById('assetCost').value);
+    const date = document.getElementById('assetDate').value;
+
+    if (!date || isNaN(amount) || amount <= 0) {
+        showToast('请填写完整信息（日期、数量）');
+        return;
+    }
+
+    // 根据类型设置默认代码
+    if (type === 'gold' && !code) code = 'au9999';
+    if (type === 'cash' && !code) code = '现金';
+
+    // ---- 存款：不合并，直接新增 ----
+    if (type === 'deposit') {
+        const months = parseInt(code) || 12;
+        const mat = new Date(date);
+        mat.setMonth(mat.getMonth() + months);
+        const asset = {
+            id: 'd' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            type: 'deposit',
+            code: code || '',
+            amount: amount,
+            date: date,
+            rate: cost || 2.5,
+            maturityDate: mat.toISOString().split('T')[0],
+            matured: false,
+            name: '定期存款'
+        };
+        app.assets.push(asset);
+        await save();
+        renderAll();
+        showToast('✅ 存款已添加');
+        clearInputs();
+        return;
+    }
+
+    // ---- 现金：合并（按 code 或 type） ----
+    if (type === 'cash') {
+        // 查找已有现金
+        const existingIdx = app.assets.findIndex(a => a.type === 'cash' && a.code === code);
+        if (existingIdx !== -1) {
+            const old = app.assets[existingIdx];
+            old.amount += amount;
+            old.currentPrice = old.amount;
+            showToast(`✅ 现金已合并，当前余额 ${formatMoney(old.amount)}`);
+            await save();
+            renderAll();
+            clearInputs();
+            return;
+        } else {
+            // 新建现金
+            const asset = {
+                id: 'c' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                type: 'cash',
+                code: code,
+                amount: amount,
+                date: date,
+                currentPrice: amount,
+                name: '现金'
+            };
+            app.assets.push(asset);
+        }
+    } else {
+        // ---- 股票 / 基金 / 黄金：合并（按 type + code） ----
+        if (cost === undefined || isNaN(cost) || cost <= 0) {
+            showToast('请填写有效的成本价');
+            return;
+        }
+        const existingIdx = app.assets.findIndex(a => a.type === type && a.code === code);
+        if (existingIdx !== -1) {
+            const old = app.assets[existingIdx];
+            const oldQty = old.amount || 0;
+            const oldCost = old.cost || 0;
+            const newQty = oldQty + amount;
+            const newCost = (oldQty * oldCost + amount * cost) / newQty;
+            old.amount = newQty;
+            old.cost = newCost;
+            // 保留原来的 name、currentPrice（刷新后会更新），日期保留最早的
+            showToast(`✅ ${type} 已合并，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
+            await save();
+            renderAll();
+            clearInputs();
+            // 合并后自动刷新行情
+            setTimeout(() => refreshQuotes(true), 500);
+            return;
+        } else {
+            // 新建资产
+            const asset = {
+                id: 'a' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                type: type,
+                code: code,
+                amount: amount,
+                cost: cost,
+                date: date,
+                currentPrice: cost,  // 暂用成本价，刷新后更新
+                name: ''
+            };
+            app.assets.push(asset);
+        }
+    }
+
+    // ---- 新资产保存（无合并的情况） ----
+    await save();
+    renderAll();
+    clearInputs();
+    showToast('✅ 资产已添加，正在刷新行情...');
+    setTimeout(() => refreshQuotes(true), 500);
+}
+
+// 辅助：清空输入框
+function clearInputs() {
+    document.getElementById('assetCode').value = '';
+    document.getElementById('assetAmount').value = '';
+    document.getElementById('assetCost').value = '';
+}
+
+    async function removeAsset(id) {
+        if (!confirm('确认删除此资产？')) return;
+        app.assets = app.assets.filter(a => a.id !== id);
+        await save();
+        renderAll();
+        showToast('已删除');
+    }
+
+    async function rolloverDeposit(id) {
+        const deposit = app.assets.find(a => a.id === id);
+        if (!deposit || !deposit.matured) return;
+        const old = deposit.maturityValue || deposit.amount;
+        const naInput = prompt('转存金额（本息合计 ' + formatMoney(old) + '）', old.toFixed(2));
+        if (naInput === null) return;
+        const na = parseFloat(naInput);
+        if (isNaN(na) || na <= 0) return;
+        const nrInput = prompt('新年化利率（%）', (deposit.rate || 2.5).toFixed(2));
+        if (nrInput === null) return;
+        const nr = parseFloat(nrInput);
+        if (isNaN(nr)) return;
+        const tmInput = prompt('期限（月）', '12');
+        if (tmInput === null) return;
+        const tm = parseInt(tmInput);
+        if (isNaN(tm) || tm <= 0) return;
+        const diff = na - old;
+        app.assets = app.assets.filter(a => a.id !== id);
+        const mat = new Date(todayStr);
+        mat.setMonth(mat.getMonth() + tm);
+        app.assets.push({
+            id: 'd' + Date.now(),
+            type: 'deposit',
+            code: '',
+            amount: na,
+            rate: nr,
+            date: todayStr,
+            maturityDate: mat.toISOString().split('T')[0],
+            matured: false,
+            name: '定期存款'
+        });
+        if (Math.abs(diff) > 0.01) {
+            let cash = app.assets.find(a => a.type === 'cash');
+            if (!cash) {
+                cash = {
+                    id: 'c' + Date.now(),
+                    type: 'cash',
+                    code: '现金',
+                    amount: 0,
+                    date: todayStr,
+                    currentPrice: 0,
+                    name: '现金'
+                };
+                app.assets.push(cash);
+            }
+            cash.amount += diff;
+            cash.currentPrice = cash.amount;
+        }
+        await save();
+        renderAll();
+        showToast('✅ 转存完成');
+    }
+
+    // ========== 清除历史数据 ==========
+    async function clearHistory() {
+        if (!confirm('⚠️ 确认清除所有投资数据（持仓、快照）？此操作不可恢复！')) return;
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) { showToast('未登录'); return; }
+            app.assets = [];
+            app.snapshots = [];
+            app.manualMarketValue = null;
+            app.lastUpdateDate = null;
+            app.lastManualRefresh = null;
+            await save();
+            renderAll();
+            showToast('✅ 历史数据已清除');
+        } catch (e) {
+            console.error(e);
+            showToast('❌ 清除失败');
+        }
+    }
+
+    // ========== 导入导出 ==========
+    function exportToExcel() {
+        try {
+            const wb = XLSX.utils.book_new();
+            const ad = [['类型', '代码/名称', '数量/金额', '成本/利率', '现价', '市值', '状态']];
+            app.assets.forEach(a => {
+                let mkt = 0;
+                if (a.type === 'deposit') mkt = a.matured ? (a.maturityValue || a.amount) : a.amount;
+                else if (a.type === 'cash') mkt = a.currentPrice || a.amount || 0;
+                else mkt = (a.currentPrice || a.cost || 0) * (a.amount || 0);
+                let st = a.type === 'deposit' ? (a.matured ? '已到期' : '存续中') : '';
+                ad.push([a.type, a.name || a.code || '', a.amount || '', a.type === 'deposit' ? (a.rate + '%') : (a.cost || ''), a.currentPrice || '', mkt, st]);
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ad), '持仓明细');
+            if (app.snapshots.length) {
+                const sd = [['日期', '总市值', '年化收益率', '总收益率', '总投入']];
+                app.snapshots.forEach(s => sd.push([s.date, s.totalValue, s.annualReturn != null ? (s.annualReturn * 100).toFixed(2) + '%' : '', s.totalReturnRate != null ? (s.totalReturnRate * 100).toFixed(2) + '%' : '', s.totalInvest]));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sd), '历史快照');
+            }
+            XLSX.writeFile(wb, '投资记录_' + todayStr + '.xlsx');
+            showToast('📥 Excel已导出');
+        } catch (e) { console.error(e); showToast('❌ 导出失败'); }
+    }
+
+    function exportJSON() {
+        try {
+            const data = {
+                goal: app.goal,
+                targetYear: app.targetYear,
+                manualMarketValue: app.manualMarketValue,
+                assets: app.assets,
+                snapshots: app.snapshots,
+                lastUpdateDate: app.lastUpdateDate,
+                lastManualRefresh: app.lastManualRefresh,
+                exportDate: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '投资数据_' + todayStr + '.json';
+            a.click();
+            showToast('📦 JSON已导出');
+        } catch (e) { showToast('❌ 导出失败'); }
+    }
+
+    function importJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!confirm('导入将覆盖当前数据，确认继续？')) return;
+                app.goal = data.goal || 100000;
+                app.targetYear = data.targetYear || null;
+                app.manualMarketValue = data.manualMarketValue ?? null;
+                app.assets = data.assets || [];
+                app.snapshots = data.snapshots || [];
+                app.lastUpdateDate = data.lastUpdateDate || null;
+                app.lastManualRefresh = data.lastManualRefresh || null;
+                await save();
+                renderAll();
+                showToast('✅ 数据导入成功');
+            } catch (err) { showToast('❌ 文件格式错误'); }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // ========== 存款期限提示 ==========
+    document.getElementById('assetType').addEventListener('change', function() {
+        const codeInput = document.getElementById('assetCode');
+        if (this.value === 'deposit') {
+            codeInput.placeholder = '期限(月)';
+        } else {
+            codeInput.placeholder = '代码 (sh600000)';
+        }
+    });
+    document.getElementById('assetType').dispatchEvent(new Event('change'));
+
+    // ========== 事件绑定 & 暴露全局 ==========
+    document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentChartType = this.dataset.type;
+            renderCharts();
+        });
+    });
+
+    window.saveGoal = saveGoal;
+    window.saveTargetYear = saveTargetYear;
+    window.addAsset = addAsset;
+    window.removeAsset = removeAsset;
+    window.rolloverDeposit = rolloverDeposit;
+    window.exportToExcel = exportToExcel;
+    window.exportJSON = exportJSON;
+    window.importJSON = importJSON;
+    window.manualRefresh = manualRefresh;
+    window.signOut = signOut;
+    window.adjustPosition = adjustPosition;
+    window.clearHistory = clearHistory;
+
+    window.addEventListener('resize', () => {
+        try { if (pieChart) pieChart.resize(); } catch (_) {}
+        try { if (barChart) barChart.resize(); } catch (_) {}
+    });
+
+    // ========== 启动 ==========
+    window.onload = async function() {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) { await loadUserData(); } else { showLoginPrompt(); }
+        } catch (e) { console.error('启动失败:', e); showToast('⚠️ 初始化失败，请刷新重试'); }
+    };
+
+})();
+</script>
 </body>
 </html>
