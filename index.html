@@ -724,53 +724,66 @@
     }
 
     function renderAssetTable() {
-        const tbody = document.querySelector('#assetTable tbody');
-        if (!app.assets.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产，请添加</td></tr>';
-            return;
-        }
-        tbody.innerHTML = app.assets.map(a => {
-            let price = a.currentPrice || a.cost || 0;
-            let market = 0;
-            if (a.type === 'deposit') market = a.matured ? (a.maturityValue || a.amount) : a.amount;
-            else if (a.type === 'cash') market = a.currentPrice || a.amount || 0;
-            else market = (a.currentPrice || a.cost || 0) * (a.amount || 0);
-
-            let profit = '';
-            if (a.type === 'deposit') {
-                profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
-            } else if (a.type === 'cash') {
-                profit = '—';
-            } else {
-                const p = (price - (a.cost || 0)) * (a.amount || 0);
-                const color = p >= 0 ? '#c64545' : '#2d7d46';
-                const absVal = Math.abs(p);
-                const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                const sign = p >= 0 ? '' : '-';
-                profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
-            }
-
-            let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
-            if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
-                actions += `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
-                actions += `<button class="btn btn-xs btn-danger" onclick="adjustPosition('${a.id}','sub')" style="margin-left:4px;">➖</button>`;
-            }
-            if (a.type === 'deposit' && a.matured) {
-                actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')" style="margin-left:4px;">转存</button>`;
-            }
-            const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
-            return `<tr>
-                <td>${typeMap[a.type]||a.type}</td>
-                <td>${a.name||a.code||'—'}</td>
-                <td>${a.amount||''}</td>
-                <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
-                <td>${formatMoney(price)}</td>
-                <td>${formatMoney(market)}</td>
-                <td>${profit}</td>
-                <td>${actions}</td>
-            </tr>`;
-        }).join('');
+    const tbody = document.querySelector('#assetTable tbody');
+    if (!app.assets.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产，请添加</td></tr>';
+        return;
     }
+    tbody.innerHTML = app.assets.map(a => {
+        let price = a.currentPrice || a.cost || 0;
+        let market = 0;
+        if (a.type === 'deposit') market = a.matured ? (a.maturityValue || a.amount) : a.amount;
+        else if (a.type === 'cash') market = a.currentPrice || a.amount || 0;
+        else market = (a.currentPrice || a.cost || 0) * (a.amount || 0);
+
+        let profit = '';
+        if (a.type === 'deposit') {
+            profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
+        } else if (a.type === 'cash') {
+            profit = '—';
+        } else {
+            const p = (price - (a.cost || 0)) * (a.amount || 0);
+            const color = p >= 0 ? '#c64545' : '#2d7d46';
+            const absVal = Math.abs(p);
+            const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            const sign = p >= 0 ? '' : '-';
+            profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
+        }
+
+        // ---- 第二列：名称和代码显示 ----
+        let displayName = '';
+        if (a.type === 'stock' || a.type === 'fund') {
+            // 股票/基金：显示 "中文名(代码)"，如果中文名未获取则只显示代码
+            const namePart = a.name || a.code || '';
+            const codePart = a.code ? `(${a.code})` : '';
+            // 如果名称和代码相同（比如还没获取名称），只显示一次
+            displayName = (a.name && a.code && a.name !== a.code) ? `${a.name} ${codePart}` : (a.name || a.code || '—');
+        } else {
+            // 黄金、存款、现金：直接显示名称或代码
+            displayName = a.name || a.code || '—';
+        }
+
+        let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
+        if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
+            actions += `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
+            actions += `<button class="btn btn-xs btn-danger" onclick="adjustPosition('${a.id}','sub')" style="margin-left:4px;">➖</button>`;
+        }
+        if (a.type === 'deposit' && a.matured) {
+            actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')" style="margin-left:4px;">转存</button>`;
+        }
+        const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
+        return `<tr>
+            <td>${typeMap[a.type]||a.type}</td>
+            <td>${displayName}</td>
+            <td>${a.amount||''}</td>
+            <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
+            <td>${formatMoney(price)}</td>
+            <td>${formatMoney(market)}</td>
+            <td>${profit}</td>
+            <td>${actions}</td>
+        </tr>`;
+    }).join('');
+}
 
     function renderCharts() {
         try {
