@@ -129,7 +129,6 @@
             <button class="btn btn-outline btn-xs" onclick="document.getElementById('importFile').click()">📂 导入JSON</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
             <span class="sync-badge" id="syncStatus">⏳ 未登录</span>
-            <!-- 新增清除数据按钮 -->
             <button class="btn btn-danger btn-xs" onclick="clearHistory()">🗑️ 清除数据</button>
             <button class="btn btn-danger btn-xs" onclick="signOut()">🚪 退出</button>
         </div>
@@ -171,7 +170,6 @@
                 <option value="deposit">银行存款</option>
                 <option value="cash">现金</option>
             </select>
-            <!-- 代码输入框，存款时变为“期限(月)” -->
             <input type="text" id="assetCode" placeholder="代码 (sh600000)" style="width:130px;">
             <input type="number" id="assetAmount" placeholder="数量/金额" step="0.01" style="width:120px;">
             <input type="number" id="assetCost" placeholder="成本价/利率" step="0.001" style="width:120px;">
@@ -269,7 +267,7 @@
         setTimeout(() => { if (t.parentNode) t.remove(); }, 3000);
     }
 
-    // ========== 认证（保持原样） ==========
+    // ========== 认证 ==========
     async function signIn(email, password) {
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -319,7 +317,7 @@
             });
     }
 
-    // ========== 数据读写（保持原样） ==========
+    // ========== 数据读写 ==========
     async function loadUserData() {
         try {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -423,7 +421,7 @@
     function fetchFund(code, cb)  { fetchProxy('fund', code).then(data => cb(data || null)); }
     function fetchGold(cb)       { fetchProxy('gold', 'au9999').then(data => cb(data || null)); }
 
-    // ========== 刷新行情（保持原样） ==========
+    // ========== 刷新行情 ==========
     async function refreshQuotes(force = false) {
         if (isUpdating) { showToast('⏳ 正在更新中...'); return; }
         const now = new Date();
@@ -461,13 +459,8 @@
                         });
                         count++;
                     } else if (asset.type === 'cash') {
-                        await new Promise(resolve => {
-                            fetchFund(asset.code || '000198', info => {
-                                if (info && info.price) { asset.yieldRate = info.price / 10000; } else { asset.yieldRate = asset.yieldRate || 0.0002; }
-                                asset.currentPrice = asset.amount + calcCashProfit(asset);
-                                resolve();
-                            });
-                        });
+                        // 现金：市值 = 本金，不计收益
+                        asset.currentPrice = asset.amount;
                         count++;
                     } else if (asset.type === 'deposit') {
                         checkDepositMaturity(asset);
@@ -484,10 +477,7 @@
             showToast(hasError ? '⚠️ 部分行情获取失败，请检查网络' : '✅ 行情已更新 (' + count + '项)');
         } catch (e) { console.error(e); showToast('❌ 刷新失败'); } finally { isUpdating = false; }
     }
-    function calcCashProfit(asset) {
-        if (!asset.date || !asset.yieldRate) return 0;
-        return asset.amount * (asset.yieldRate) * (daysBetween(asset.date, todayStr) / 365);
-    }
+
     function checkDepositMaturity(asset) {
         if (asset.type !== 'deposit' || !asset.maturityDate) return;
         const today = new Date(todayStr);
@@ -498,6 +488,7 @@
             asset.maturityValue = asset.amount + asset.amount * (asset.rate / 100) * (days / 365);
         }
     }
+
     function saveSnapshot() {
         const m = computeMetrics();
         const today = new Date().toISOString().split('T')[0];
@@ -520,6 +511,7 @@
         }
         if (app.snapshots.length > 400) app.snapshots.shift();
     }
+
     function scheduleMidnightUpdate() {
         if (refreshTimeout) clearTimeout(refreshTimeout);
         const now = new Date();
@@ -527,12 +519,14 @@
         target.setHours(24, 0, 0, 0);
         refreshTimeout = setTimeout(() => { refreshQuotes(true); refreshTimeout = null; }, target - now + 1000);
     }
+
     function checkAutoUpdate() {
         if (app.lastUpdateDate !== todayStr) {
             const now = new Date();
             if (now.getHours() === 0 || now.getHours() < 6) { refreshQuotes(true); } else { scheduleMidnightUpdate(); }
         }
     }
+
     async function manualRefresh() {
         if (app.lastManualRefresh && Date.now() - app.lastManualRefresh < 60000) {
             showToast('⏳ 手动刷新需间隔1分钟');
@@ -591,49 +585,103 @@
         return { totalInvest, totalMarketValue: marketValue, totalReturn, annualReturn, goalComplete, avgYears };
     }
 
-    // ========== 加减仓 ==========
+    // ========== 加减仓（数量+成本/卖出价） ==========
     async function adjustPosition(assetId, action) {
         const asset = app.assets.find(a => a.id === assetId);
         if (!asset) return showToast('资产不存在');
         if (asset.type === 'deposit' || asset.type === 'cash') return showToast('存款和现金不支持加减仓');
-        const price = asset.currentPrice || asset.cost || 0;
-        if (price <= 0) return showToast('当前价格无效，请先刷新行情');
-        const amountInput = prompt(`请输入${action === 'add' ? '加仓' : '减仓'}金额（元）：`, '1000');
-        if (amountInput === null) return;
-        const amount = parseFloat(amountInput);
-        if (isNaN(amount) || amount <= 0) return showToast('金额必须为正数');
-        const quantity = amount / price;
+
         if (action === 'add') {
+            // ---- 加仓：输入数量和成本单价 ----
+            const qtyInput = prompt('请输入加仓数量：', '');
+            if (qtyInput === null) return;
+            const qty = parseFloat(qtyInput);
+            if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
+
+            const costInput = prompt('请输入加仓成本价（元/单位）：', '');
+            if (costInput === null) return;
+            const costPrice = parseFloat(costInput);
+            if (isNaN(costPrice) || costPrice <= 0) return showToast('成本价必须为正数');
+
+            const totalCost = qty * costPrice;
+
+            // 检查现金
             let cashAsset = app.assets.find(a => a.type === 'cash');
             if (!cashAsset) {
-                cashAsset = { id: 'c' + Date.now(), type: 'cash', code: '000198', amount: 0, date: todayStr, currentPrice: 0, name: '余额宝', yieldRate: 0.0002 };
+                cashAsset = {
+                    id: 'c' + Date.now(),
+                    type: 'cash',
+                    code: '现金',
+                    amount: 0,
+                    date: todayStr,
+                    currentPrice: 0,
+                    name: '现金'
+                };
                 app.assets.push(cashAsset);
             }
-            if (cashAsset.amount < amount) return showToast(`现金不足！当前现金 ${formatMoney(cashAsset.amount)}`);
+            if (cashAsset.amount < totalCost) {
+                return showToast(`现金不足！需要 ${formatMoney(totalCost)}，当前现金 ${formatMoney(cashAsset.amount)}`);
+            }
+
+            // 更新资产（加权平均成本）
             const oldQty = asset.amount || 0;
             const oldCost = asset.cost || 0;
-            const newQty = oldQty + quantity;
-            const newCost = (oldQty * oldCost + amount) / newQty;
+            const newQty = oldQty + qty;
+            const newCost = (oldQty * oldCost + qty * costPrice) / newQty;
             asset.amount = newQty;
             asset.cost = newCost;
-            cashAsset.amount -= amount;
+
+            cashAsset.amount -= totalCost;
             cashAsset.currentPrice = cashAsset.amount;
-            showToast(`✅ 加仓成功，买入 ${quantity.toFixed(4)} 份`);
-        } else {
-            if ((asset.amount || 0) < quantity) return showToast(`持仓不足！当前持仓 ${asset.amount} 份`);
-            const newQty = (asset.amount || 0) - quantity;
-            asset.amount = newQty;
+
+            showToast(`✅ 加仓成功，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
+
+        } else if (action === 'sub') {
+            // ---- 减仓：输入数量和卖出单价 ----
+            const qtyInput = prompt(`请输入减仓数量（当前持仓 ${asset.amount}）：`, '');
+            if (qtyInput === null) return;
+            const qty = parseFloat(qtyInput);
+            if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
+
+            if (qty > (asset.amount || 0)) {
+                return showToast(`持仓不足！当前持仓 ${asset.amount} 份`);
+            }
+
+            const priceInput = prompt('请输入卖出单价（元/单位）：', '');
+            if (priceInput === null) return;
+            const sellPrice = parseFloat(priceInput);
+            if (isNaN(sellPrice) || sellPrice <= 0) return showToast('卖出单价必须为正数');
+
+            const sellValue = qty * sellPrice;
+
+            // 更新资产（数量减少，成本不变）
+            asset.amount = (asset.amount || 0) - qty;
+
+            // 增加现金
             let cashAsset = app.assets.find(a => a.type === 'cash');
             if (!cashAsset) {
-                cashAsset = { id: 'c' + Date.now(), type: 'cash', code: '000198', amount: 0, date: todayStr, currentPrice: 0, name: '余额宝', yieldRate: 0.0002 };
+                cashAsset = {
+                    id: 'c' + Date.now(),
+                    type: 'cash',
+                    code: '现金',
+                    amount: 0,
+                    date: todayStr,
+                    currentPrice: 0,
+                    name: '现金'
+                };
                 app.assets.push(cashAsset);
             }
-            cashAsset.amount += amount;
+            cashAsset.amount += sellValue;
             cashAsset.currentPrice = cashAsset.amount;
-            showToast(`✅ 减仓成功，卖出 ${quantity.toFixed(4)} 份`);
+
+            showToast(`✅ 减仓成功，卖出 ${qty} 份，收入 ${formatMoney(sellValue)}`);
         }
+
+        // 保存并刷新
         await save();
         renderAll();
+
+        // 如果数量归零，自动移除该资产
         if (asset.amount <= 0.0001) {
             app.assets = app.assets.filter(a => a.id !== asset.id);
             await save();
@@ -642,7 +690,7 @@
         }
     }
 
-    // ========== 渲染（含颜色修改） ==========
+    // ========== 渲染 ==========
     function renderAll() {
         const m = computeMetrics();
 
@@ -676,57 +724,55 @@
     }
 
     function renderAssetTable() {
-    const tbody = document.querySelector('#assetTable tbody');
-    if (!app.assets.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产，请添加</td></tr>';
-        return;
+        const tbody = document.querySelector('#assetTable tbody');
+        if (!app.assets.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">暂无资产，请添加</td></tr>';
+            return;
+        }
+        tbody.innerHTML = app.assets.map(a => {
+            let price = a.currentPrice || a.cost || 0;
+            let market = 0;
+            if (a.type === 'deposit') market = a.matured ? (a.maturityValue || a.amount) : a.amount;
+            else if (a.type === 'cash') market = a.currentPrice || a.amount || 0;
+            else market = (a.currentPrice || a.cost || 0) * (a.amount || 0);
+
+            let profit = '';
+            if (a.type === 'deposit') {
+                profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
+            } else if (a.type === 'cash') {
+                profit = '—';
+            } else {
+                const p = (price - (a.cost || 0)) * (a.amount || 0);
+                const color = p >= 0 ? '#c64545' : '#2d7d46';
+                const absVal = Math.abs(p);
+                const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                const sign = p >= 0 ? '' : '-';
+                profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
+            }
+
+            let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
+            if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
+                actions += `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
+                actions += `<button class="btn btn-xs btn-danger" onclick="adjustPosition('${a.id}','sub')" style="margin-left:4px;">➖</button>`;
+            }
+            if (a.type === 'deposit' && a.matured) {
+                actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')" style="margin-left:4px;">转存</button>`;
+            }
+            const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
+            return `<tr>
+                <td>${typeMap[a.type]||a.type}</td>
+                <td>${a.name||a.code||'—'}</td>
+                <td>${a.amount||''}</td>
+                <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
+                <td>${formatMoney(price)}</td>
+                <td>${formatMoney(market)}</td>
+                <td>${profit}</td>
+                <td>${actions}</td>
+            </tr>`;
+        }).join('');
     }
-    tbody.innerHTML = app.assets.map(a => {
-        let price = a.currentPrice || a.cost || 0;
-        let market = 0;
-        if (a.type === 'deposit') market = a.matured ? (a.maturityValue || a.amount) : a.amount;
-        else if (a.type === 'cash') market = a.currentPrice || a.amount || 0;
-        else market = (a.currentPrice || a.cost || 0) * (a.amount || 0);
-
-        let profit = '';
-        if (a.type === 'deposit') {
-            profit = a.matured ? '✅ 已到期' : '⏳ 存续中';
-        } else if (a.type === 'cash') {
-            profit = '收益约' + formatMoney(market - (a.amount || 0));
-        } else {
-            const p = (price - (a.cost || 0)) * (a.amount || 0);
-            const color = p >= 0 ? '#c64545' : '#2d7d46';
-            // 手动格式化，保留两位小数，千位分隔，负号
-            const absVal = Math.abs(p);
-            const formatted = absVal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            const sign = p >= 0 ? '' : '-';
-            profit = `<span style="color:${color};">${sign}¥${formatted}</span>`;
-        }
-
-        let actions = `<button class="btn btn-xs btn-outline" onclick="removeAsset('${a.id}')">删除</button>`;
-        if (a.type === 'stock' || a.type === 'fund' || a.type === 'gold') {
-            actions += `<button class="btn btn-xs btn-primary" onclick="adjustPosition('${a.id}','add')" style="margin-left:4px;">➕</button>`;
-            actions += `<button class="btn btn-xs btn-danger" onclick="adjustPosition('${a.id}','sub')" style="margin-left:4px;">➖</button>`;
-        }
-        if (a.type === 'deposit' && a.matured) {
-            actions += `<button class="btn btn-xs btn-accent" onclick="rolloverDeposit('${a.id}')" style="margin-left:4px;">转存</button>`;
-        }
-        const typeMap = { stock: '股票', fund: '基金', gold: '黄金', deposit: '存款', cash: '现金' };
-        return `<tr>
-            <td>${typeMap[a.type]||a.type}</td>
-            <td>${a.name||a.code||'—'}</td>
-            <td>${a.amount||''}</td>
-            <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
-            <td>${formatMoney(price)}</td>
-            <td>${formatMoney(market)}</td>
-            <td>${profit}</td>
-            <td>${actions}</td>
-        </tr>`;
-    }).join('');
-}
 
     function renderCharts() {
-        // 饼图（金额保留两位小数）
         try {
             if (!pieChart) pieChart = echarts.init(document.getElementById('pieChart'));
             const assetsWithValue = app.assets.filter(a => {
@@ -768,7 +814,6 @@
             pieChart.resize();
         } catch (e) { console.warn('饼图渲染失败', e); }
 
-        // 柱状图（保持不变）
         try {
             if (!barChart) barChart = echarts.init(document.getElementById('barChart'));
             const snaps = app.snapshots;
@@ -808,6 +853,7 @@
         const v = parseInt(document.getElementById('targetYearInput').value);
         if (!isNaN(v) && v >= 2025) { app.targetYear = v; updateMainTitle(); await save(); renderAll(); showToast('目标年份已设定为 ' + v); }
     }
+
     async function addAsset() {
         const type = document.getElementById('assetType').value;
         const code = document.getElementById('assetCode').value.trim();
@@ -833,10 +879,10 @@
             asset.rate = cost || 2.5;
             asset.amount = amount;
         } else if (type === 'cash') {
-            asset.yieldRate = 0.0002;
+            // 现金：纯现金，不计收益
             asset.currentPrice = amount;
             asset.amount = amount;
-            asset.code = code || '000198';
+            asset.code = code || '现金';
         } else {
             asset.cost = cost || 0;
             asset.amount = amount;
@@ -851,6 +897,7 @@
         showToast('✅ 资产已添加，正在刷新行情...');
         setTimeout(() => refreshQuotes(true), 500);
     }
+
     async function removeAsset(id) {
         if (!confirm('确认删除此资产？')) return;
         app.assets = app.assets.filter(a => a.id !== id);
@@ -858,6 +905,7 @@
         renderAll();
         showToast('已删除');
     }
+
     async function rolloverDeposit(id) {
         const deposit = app.assets.find(a => a.id === id);
         if (!deposit || !deposit.matured) return;
@@ -892,7 +940,15 @@
         if (Math.abs(diff) > 0.01) {
             let cash = app.assets.find(a => a.type === 'cash');
             if (!cash) {
-                cash = { id: 'c' + Date.now(), type: 'cash', code: '000198', amount: 0, date: todayStr, currentPrice: 0, name: '余额宝', yieldRate: 0.0002 };
+                cash = {
+                    id: 'c' + Date.now(),
+                    type: 'cash',
+                    code: '现金',
+                    amount: 0,
+                    date: todayStr,
+                    currentPrice: 0,
+                    name: '现金'
+                };
                 app.assets.push(cash);
             }
             cash.amount += diff;
@@ -903,7 +959,7 @@
         showToast('✅ 转存完成');
     }
 
-    // ========== 清除历史数据（新增） ==========
+    // ========== 清除历史数据 ==========
     async function clearHistory() {
         if (!confirm('⚠️ 确认清除所有投资数据（持仓、快照）？此操作不可恢复！')) return;
         try {
@@ -946,6 +1002,7 @@
             showToast('📥 Excel已导出');
         } catch (e) { console.error(e); showToast('❌ 导出失败'); }
     }
+
     function exportJSON() {
         try {
             const data = {
@@ -966,6 +1023,7 @@
             showToast('📦 JSON已导出');
         } catch (e) { showToast('❌ 导出失败'); }
     }
+
     function importJSON(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -990,7 +1048,7 @@
         event.target.value = '';
     }
 
-    // ========== 存款期限提示（新增） ==========
+    // ========== 存款期限提示 ==========
     document.getElementById('assetType').addEventListener('change', function() {
         const codeInput = document.getElementById('assetCode');
         if (this.value === 'deposit') {
@@ -999,7 +1057,6 @@
             codeInput.placeholder = '代码 (sh600000)';
         }
     });
-    // 初始化一次
     document.getElementById('assetType').dispatchEvent(new Event('change'));
 
     // ========== 事件绑定 & 暴露全局 ==========
@@ -1023,7 +1080,7 @@
     window.manualRefresh = manualRefresh;
     window.signOut = signOut;
     window.adjustPosition = adjustPosition;
-    window.clearHistory = clearHistory;   // 暴露清除函数
+    window.clearHistory = clearHistory;
 
     window.addEventListener('resize', () => {
         try { if (pieChart) pieChart.resize(); } catch (_) {}
