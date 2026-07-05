@@ -418,6 +418,8 @@
             'use strict';
 
             // ========== Supabase 配置 ==========
+            // ========== 代理配置 ==========
+            const SUPABASE_FUNCTION_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co/functions/v1/quote-proxy';  // 替换为您的实际地址
             const SUPABASE_URL = 'https://zvkrwcxpsnwqxtcukovx.supabase.co';
             const SUPABASE_ANON_KEY =
                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2a3J3Y3hwc253cXh0Y3Vrb3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjk4NzIsImV4cCI6MjA5ODY0NTg3Mn0._oLjDmy5usDnVNoK9ilb_Vf4BZDTUIV5pCO_0T6X24Y';
@@ -430,6 +432,26 @@
             } else {
                 throw new Error('Supabase 客户端未加载');
             }
+
+            async function fetchProxy(type, code) {
+    try {
+        const response = await fetch(
+            `${SUPABASE_FUNCTION_URL}?type=${encodeURIComponent(type)}&code=${encodeURIComponent(code)}`,
+            {
+                headers: { 'apikey': SUPABASE_ANON_KEY }
+            }
+        );
+        if (!response.ok) {
+            const err = await response.json();
+            console.warn('代理返回错误:', err);
+            return null;
+        }
+        return await response.json();
+    } catch (e) {
+        console.warn(`代理请求失败 (${type}, ${code}):`, e);
+        return null;
+    }
+}
 
             // ========== 全局状态 ==========
             let app = {
@@ -624,265 +646,22 @@
                     '📊 个人投资记录';
             }
 
-            // ========== 行情接口（多重备用） ==========
-            // ---- 核心腾讯 JSONP ----
-            function fetchTencent(symbol, cb) {
-                const callbackName = 'tq_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                const script = document.createElement('script');
-                let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) { resolved = true; delete window[callbackName];
-                        script.remove();
-                        console.warn('⏰ 请求超时:', symbol);
-                        cb(null); }
-                }, 12000);
 
-                window[callbackName] = function(data) {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeout);
-                    delete window[callbackName];
-                    script.remove();
-                    try {
-                        if (typeof data === 'string') {
-                            let content = data;
-                            const eqIdx = content.indexOf('=');
-                            if (eqIdx !== -1) content = content.substring(eqIdx + 1);
-                            content = content.trim();
-                            if (content.startsWith('"') && content.endsWith('"')) content = content.substring(1, content
-                                .length - 1);
-                            content = content.replace(/\\"/g, '"');
-
-                            // 股票/黄金格式
-                            const parts = content.split('~');
-                            if (parts.length >= 3) {
-                                const name = parts[0] || symbol;
-                                const price = parseFloat(parts[1]);
-                                const prevClose = parseFloat(parts[2]);
-                                if (!isNaN(price) && price > 0) {
-                                    cb({ name, price, change: prevClose > 0 ? (price - prevClose) / prevClose : 0 });
-                                    return;
-                                }
-                            }
-                            // 基金JSON
-                            try {
-                                const jsonData = JSON.parse(content);
-                                if (jsonData && jsonData.gsz) {
-                                    const price = parseFloat(jsonData.gsz);
-                                    const change = parseFloat(jsonData.gszzl || 0) / 100;
-                                    if (!isNaN(price) && price > 0) {
-                                        cb({ name: jsonData.name || symbol, price, change });
-                                        return;
-                                    }
-                                }
-                            } catch (_) {}
-                            // 嵌套引号
-                            const match = content.match(/="([^"]*)"/);
-                            if (match) {
-                                const inner = match[1];
-                                const parts2 = inner.split('~');
-                                if (parts2.length >= 3) {
-                                    const name = parts2[0] || symbol;
-                                    const price = parseFloat(parts2[1]);
-                                    const prevClose = parseFloat(parts2[2]);
-                                    if (!isNaN(price) && price > 0) {
-                                        cb({ name, price, change: prevClose > 0 ? (price - prevClose) / prevClose : 0 });
-                                        return;
-                                    }
-                                }
-                            }
-                        }
-                        if (data && typeof data === 'object') {
-                            if (data.gsz) {
-                                const price = parseFloat(data.gsz);
-                                const change = parseFloat(data.gszzl || 0) / 100;
-                                if (!isNaN(price) && price > 0) { cb({ name: data.name || symbol, price, change }); return; }
-                            }
-                            if (data.price) {
-                                const price = parseFloat(data.price);
-                                if (!isNaN(price) && price > 0) { cb({ name: data.name || symbol, price, change: data
-                                        .change || 0 }); return; }
-                            }
-                        }
-                        console.warn('❌ 解析失败:', symbol, data);
-                        cb(null);
-                    } catch (e) { console.error('💥 解析异常:', symbol, e);
-                        cb(null); }
-                };
-
-                script.src = `https://qt.gtimg.cn/q=${symbol}&_var=${callbackName}`;
-                script.onerror = function() {
-                    if (!resolved) { resolved = true; clearTimeout(timeout); delete window[callbackName];
-                        script.remove();
-                        console.warn('🌐 网络错误:', symbol);
-                        cb(null); }
-                };
-                document.body.appendChild(script);
-            }
-
-            // ---- 新浪基金 ----
-            function fetchSinaFund(code, cb) {
-                const padded = code.padStart(6, '0');
-                const callbackName = 'sina_fund_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                const script = document.createElement('script');
-                let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) { resolved = true; delete window[callbackName];
-                        script.remove();
-                        cb(null); }
-                }, 8000);
-
-                window[callbackName] = function(data) {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeout);
-                    delete window[callbackName];
-                    script.remove();
-                    try {
-                        const match = data.match(/="([^"]*)"/);
-                        if (match) {
-                            const parts = match[1].split(',');
-                            if (parts.length >= 2) {
-                                const name = parts[0];
-                                const price = parseFloat(parts[1]);
-                                if (!isNaN(price) && price > 0) { cb({ name, price, change: 0 }); return; }
-                            }
-                        }
-                        cb(null);
-                    } catch (e) { cb(null); }
-                };
-                script.src = `https://hq.sinajs.cn/list=jj${padded}&_=${callbackName}`;
-                script.onerror = () => { if (!resolved) { resolved = true; clearTimeout(timeout);
-                        cb(null); } };
-                document.body.appendChild(script);
-            }
-
-            // ---- 新浪黄金 ----
-            function fetchSinaGold(cb) {
-                const callbackName = 'sina_gold_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                const script = document.createElement('script');
-                let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) { resolved = true; delete window[callbackName];
-                        script.remove();
-                        cb(null); }
-                }, 8000);
-
-                window[callbackName] = function(data) {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeout);
-                    delete window[callbackName];
-                    script.remove();
-                    try {
-                        const match = data.match(/="([^"]*)"/);
-                        if (match) {
-                            const parts = match[1].split(',');
-                            if (parts.length >= 2) {
-                                const name = parts[0] || '黄金现货';
-                                const price = parseFloat(parts[1]);
-                                if (!isNaN(price) && price > 0) { cb({ name, price, change: 0 }); return; }
-                            }
-                        }
-                        cb(null);
-                    } catch (e) { cb(null); }
-                };
-                script.src = `https://hq.sinajs.cn/list=hf_au9999&_=${callbackName}`;
-                script.onerror = () => { if (!resolved) { resolved = true; clearTimeout(timeout);
-                        cb(null); } };
-                document.body.appendChild(script);
-            }
-
-            // ---- 天天基金 ----
-            function fetchEastmoneyFund(code, cb) {
-                const padded = code.padStart(6, '0');
-                const callbackName = 'em_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-                const script = document.createElement('script');
-                let resolved = false;
-                const timeout = setTimeout(() => {
-                    if (!resolved) { resolved = true; delete window[callbackName];
-                        script.remove();
-                        cb(null); }
-                }, 8000);
-
-                window[callbackName] = function(data) {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeout);
-                    delete window[callbackName];
-                    script.remove();
-                    try {
-                        if (data && data.gsz) {
-                            const price = parseFloat(data.gsz);
-                            const change = parseFloat(data.gszzl || 0) / 100;
-                            if (!isNaN(price) && price > 0) { cb({ name: data.name || `基金${code}`, price, change });
-                                return; }
-                        }
-                        cb(null);
-                    } catch (e) { cb(null); }
-                };
-                script.src = `https://fundgz.1234567.com.cn/js/${padded}.js?callback=${callbackName}`;
-                script.onerror = () => { if (!resolved) { resolved = true; clearTimeout(timeout);
-                        cb(null); } };
-                document.body.appendChild(script);
-            }
 
             // ---- 多源基金获取（自动切换） ----
             function fetchFund(code, cb) {
-                const sources = [
-                    (next) => { const padded = code.padStart(6, '0');
-                        fetchTencent('jj' + padded, next); },
-                    (next) => fetchSinaFund(code, next),
-                    (next) => fetchEastmoneyFund(code, next),
-                    (next) => {
-                        const userPrice = prompt(`⚠️ 所有自动接口均无法获取基金 ${code} 的净值，请手动输入当前净值（元）：`, '');
-                        if (userPrice !== null) {
-                            const price = parseFloat(userPrice);
-                            if (!isNaN(price) && price > 0) { next({ name: `基金${code}`, price, change: 0 }); return; }
-                        }
-                        next(null);
-                    }
-                ];
-                let idx = 0;
-                const tryNext = () => {
-                    if (idx >= sources.length) { cb(null); return; }
-                    sources[idx]((info) => {
-                        if (info) { cb(info); } else { idx++;
-                            tryNext(); }
-                    });
-                };
-                tryNext();
-            }
+    fetchProxy('fund', code).then(data => cb(data || null));
+}
 
             // ---- 多源黄金获取 ----
             function fetchGold(cb) {
-                const sources = [
-                    (next) => fetchTencent('au9999', next),
-                    (next) => fetchSinaGold(next),
-                    (next) => {
-                        const userPrice = prompt('⚠️ 所有自动接口均无法获取黄金现货价格，请手动输入当前金价（元/克）：', '');
-                        if (userPrice !== null) {
-                            const price = parseFloat(userPrice);
-                            if (!isNaN(price) && price > 0) { next({ name: '黄金现货', price, change: 0 }); return; }
-                        }
-                        next(null);
-                    }
-                ];
-                let idx = 0;
-                const tryNext = () => {
-                    if (idx >= sources.length) { cb(null); return; }
-                    sources[idx]((info) => {
-                        if (info) { cb(info); } else { idx++;
-                            tryNext(); }
-                    });
-                };
-                tryNext();
-            }
+    fetchProxy('gold', 'au9999').then(data => cb(data || null));
+}
 
             // 股票仅用腾讯（足够）
             function fetchStock(code, cb) {
-                fetchTencent(code, cb);
-            }
+    fetchProxy('stock', code).then(data => cb(data || null));
+}
 
             // ========== 刷新行情 ==========
             async function refreshQuotes(force = false) {
