@@ -1056,7 +1056,7 @@
             return `<tr>
                 <td>${typeMap[a.type]||a.type}</td>
                 <td>${displayName}</td>
-                <td>${a.amount||''}</td>
+                <td>${a.amount ? parseFloat(a.amount.toFixed(4)) : ''}</td>
                 <td>${a.type==='deposit'?(a.rate+'%'):(a.cost?formatMoney(a.cost):'—')}</td>
                 <td>${formatMoney(price)}</td>
                 <td>${formatMoney(market)}</td>
