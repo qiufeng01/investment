@@ -1511,93 +1511,96 @@ async function adjustPosition(assetId, action) {
 
     // 渲染交易记录表格
     function renderTxnTable() {
-        const assetId = document.getElementById('txnAssetSelect').value;
-        const directionFilter = document.getElementById('txnDirectionFilter').value;
+    const assetId = document.getElementById('txnAssetSelect').value;
+    const directionFilter = document.getElementById('txnDirectionFilter').value;
 
-        if (!assetId) {
-            document.getElementById('txnTbody').innerHTML = '<tr><td colspan="8" class="no-txn">请选择资产查看交易记录</td></tr>';
-            document.getElementById('txnCount').textContent = '0';
-            document.getElementById('txnBuyTotal').textContent = '¥0';
-            document.getElementById('txnSellTotal').textContent = '¥0';
-            document.getElementById('txnProfit').textContent = '¥0';
-            document.getElementById('txnRecordCount').textContent = '';
-            return;
-        }
-
-        const asset = app.assets.find(a => a.id === assetId);
-        if (!asset || !asset.transactions || asset.transactions.length === 0) {
-            document.getElementById('txnTbody').innerHTML = '<tr><td colspan="8" class="no-txn">该资产暂无交易记录</td></tr>';
-            document.getElementById('txnCount').textContent = '0';
-            document.getElementById('txnBuyTotal').textContent = '¥0';
-            document.getElementById('txnSellTotal').textContent = '¥0';
-            document.getElementById('txnProfit').textContent = '¥0';
-            document.getElementById('txnRecordCount').textContent = '';
-            return;
-        }
-
-        // 按方向筛选
-        let txns = asset.transactions;
-        if (directionFilter !== 'all') {
-            txns = txns.filter(t => t.type === directionFilter);
-        }
-
-        // 按日期降序排列
-        txns = [...txns].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        // 计算持仓变化（按日期升序累计，但显示时按降序，需要先算累计再映射）
-        const sortedAsc = [...asset.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-        let runningQty = 0;
-        const holdingMap = {};
-        sortedAsc.forEach(t => {
-            runningQty += (t.type === 'add' ? t.qty : -t.qty);
-            holdingMap[t.date + t.type + t.qty + t.price] = runningQty;
-        });
-
-        // 统计
-        let totalBuy = 0, totalSell = 0;
-        asset.transactions.forEach(t => {
-            const amt = t.qty * t.price;
-            if (t.type === 'add') totalBuy += amt;
-            else totalSell += amt;
-        });
-        const profit = totalSell - totalBuy;
-
-        document.getElementById('txnCount').textContent = txns.length;
-        document.getElementById('txnBuyTotal').textContent = formatMoney(totalBuy);
-        document.getElementById('txnSellTotal').textContent = formatMoney(totalSell);
-        const profitEl = document.getElementById('txnProfit');
-        profitEl.textContent = (profit >= 0 ? '+' : '') + formatMoney(profit);
-        profitEl.className = 'value' + (profit >= 0 ? ' positive' : ' negative');
-
-        // 构建表格行
-        const typeMap = { stock: '股票', fund: '基金', gold: '黄金' };
-        const typeLabel = typeMap[asset.type] || asset.type;
-        const nameDisplay = (asset.name || asset.code || asset.type) + (asset.code ? ` (${asset.code})` : '');
-
-        const rows = txns.map(t => {
-            const isBuy = t.type === 'add';
-            const dirLabel = isBuy ? '买入' : '卖出';
-            const dirClass = isBuy ? 'direction-buy' : 'direction-sell';
-            const amount = t.qty * t.price;
-            const sign = isBuy ? '+' : '-';
-            // 查找持仓变化
-            const key = t.date + t.type + t.qty + t.price;
-            const holding = holdingMap[key] !== undefined ? holdingMap[key] : '—';
-            return `<tr>
-                <td>${t.date}</td>
-                <td>${typeLabel}</td>
-                <td>${nameDisplay}</td>
-                <td class="${dirClass}">${dirLabel}</td>
-                <td>${t.qty.toFixed(4)}</td>
-                <td>${formatMoney(t.price)}</td>
-                <td>${sign}${formatMoney(amount)}</td>
-                <td>${typeof holding === 'number' ? holding.toFixed(4) : '—'}</td>
-            </tr>`;
-        });
-
-        document.getElementById('txnTbody').innerHTML = rows.join('');
-        document.getElementById('txnRecordCount').textContent = `共 ${txns.length} 条记录（${asset.transactions.length} 笔总计）`;
+    if (!assetId) {
+        document.getElementById('txnTbody').innerHTML = '<tr><td colspan="8" class="no-txn">请选择资产查看交易记录</td></tr>';
+        document.getElementById('txnCount').textContent = '0';
+        document.getElementById('txnBuyTotal').textContent = '¥0';
+        document.getElementById('txnSellTotal').textContent = '¥0';
+        document.getElementById('txnProfit').textContent = '¥0';
+        document.getElementById('txnRecordCount').textContent = '';
+        return;
     }
+
+    const asset = app.assets.find(a => a.id === assetId);
+    if (!asset || !asset.transactions || asset.transactions.length === 0) {
+        document.getElementById('txnTbody').innerHTML = '<tr><td colspan="8" class="no-txn">该资产暂无交易记录</td></tr>';
+        document.getElementById('txnCount').textContent = '0';
+        document.getElementById('txnBuyTotal').textContent = '¥0';
+        document.getElementById('txnSellTotal').textContent = '¥0';
+        document.getElementById('txnProfit').textContent = '¥0';
+        document.getElementById('txnRecordCount').textContent = '';
+        return;
+    }
+
+    // 按方向筛选
+    let txns = asset.transactions;
+    if (directionFilter !== 'all') {
+        txns = txns.filter(t => t.type === directionFilter);
+    }
+
+    // 按日期降序排列
+    txns = [...txns].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // 计算持仓变化（按日期升序累计）
+    const sortedAsc = [...asset.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let runningQty = 0;
+    const holdingMap = {};
+    sortedAsc.forEach(t => {
+        runningQty += (t.type === 'add' ? t.qty : -t.qty);
+        holdingMap[t.date + t.type + t.qty + t.price] = runningQty;
+    });
+
+    // ---- 统计 ----
+    let totalBuy = 0, totalSell = 0;
+    asset.transactions.forEach(t => {
+        const amt = t.qty * t.price;
+        if (t.type === 'add') totalBuy += amt;
+        else totalSell += amt;
+    });
+    // 持仓市值 = 当前持仓数量 × 当前价格（或成本价）
+    const currentPrice = asset.currentPrice || asset.cost || 0;
+    const currentMarketValue = (asset.amount || 0) * currentPrice;
+    // 总体盈亏 = 持仓市值 + 已卖出收入 - 总买入成本
+    const profit = currentMarketValue + totalSell - totalBuy;
+
+    document.getElementById('txnCount').textContent = txns.length;
+    document.getElementById('txnBuyTotal').textContent = formatMoney(totalBuy);
+    document.getElementById('txnSellTotal').textContent = formatMoney(totalSell);
+    const profitEl = document.getElementById('txnProfit');
+    profitEl.textContent = (profit >= 0 ? '+' : '') + formatMoney(profit);
+    profitEl.className = 'value' + (profit >= 0 ? ' positive' : ' negative');
+
+    // ---- 构建表格行 ----
+    const typeMap = { stock: '股票', fund: '基金', gold: '黄金' };
+    const typeLabel = typeMap[asset.type] || asset.type;
+    const nameDisplay = (asset.name || asset.code || asset.type) + (asset.code ? ` (${asset.code})` : '');
+
+    const rows = txns.map(t => {
+        const isBuy = t.type === 'add';
+        const dirLabel = isBuy ? '买入' : '卖出';
+        const dirClass = isBuy ? 'direction-buy' : 'direction-sell';
+        const amount = t.qty * t.price;
+        const sign = isBuy ? '+' : '-';
+        const key = t.date + t.type + t.qty + t.price;
+        const holding = holdingMap[key] !== undefined ? holdingMap[key] : '—';
+        return `<tr>
+            <td>${t.date}</td>
+            <td>${typeLabel}</td>
+            <td>${nameDisplay}</td>
+            <td class="${dirClass}">${dirLabel}</td>
+            <td>${t.qty.toFixed(4)}</td>
+            <td>${formatMoney(t.price)}</td>
+            <td>${sign}${formatMoney(amount)}</td>
+            <td>${typeof holding === 'number' ? holding.toFixed(4) : '—'}</td>
+        </tr>`;
+    });
+
+    document.getElementById('txnTbody').innerHTML = rows.join('');
+    document.getElementById('txnRecordCount').textContent = `共 ${txns.length} 条记录（${asset.transactions.length} 笔总计）`;
+}
 
     // 导出 CSV
     function exportTxnCSV() {
