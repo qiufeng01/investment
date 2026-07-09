@@ -786,113 +786,86 @@
     }
 
     // ========== 加减仓 ==========
-    async function adjustPosition(assetId, action) {
-        const asset = app.assets.find(a => a.id === assetId);
-        if (!asset) return showToast('资产不存在');
-        if (asset.type === 'deposit' || asset.type === 'cash') return showToast('存款和现金不支持加减仓');
+    // ========== 加减仓（无现金关联） ==========
+async function adjustPosition(assetId, action) {
+    const asset = app.assets.find(a => a.id === assetId);
+    if (!asset) return showToast('资产不存在');
+    if (asset.type === 'deposit' || asset.type === 'cash') return showToast('存款和现金不支持加减仓');
 
-        if (!asset.transactions) asset.transactions = [];
+    if (!asset.transactions) asset.transactions = [];
 
-        if (action === 'add') {
-            const qtyInput = prompt('请输入加仓数量：', '');
-            if (qtyInput === null) return;
-            const qty = parseFloat(qtyInput);
-            if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
+    if (action === 'add') {
+        // ---- 加仓：输入数量和成本单价 ----
+        const qtyInput = prompt('请输入加仓数量：', '');
+        if (qtyInput === null) return;
+        const qty = parseFloat(qtyInput);
+        if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
 
-            const costInput = prompt('请输入加仓成本价（元/单位）：', '');
-            if (costInput === null) return;
-            const costPrice = parseFloat(costInput);
-            if (isNaN(costPrice) || costPrice <= 0) return showToast('成本价必须为正数');
+        const costInput = prompt('请输入加仓成本价（元/单位）：', '');
+        if (costInput === null) return;
+        const costPrice = parseFloat(costInput);
+        if (isNaN(costPrice) || costPrice <= 0) return showToast('成本价必须为正数');
 
-            const totalCost = qty * costPrice;
-            let cashAsset = app.assets.find(a => a.type === 'cash');
-            if (!cashAsset) {
-                cashAsset = {
-                    id: 'c' + Date.now(),
-                    type: 'cash',
-                    code: '现金',
-                    amount: 0,
-                    date: todayStr,
-                    currentPrice: 0,
-                    name: '现金'
-                };
-                app.assets.push(cashAsset);
-            }
-            if (cashAsset.amount < totalCost) {
-                return showToast(`现金不足！需要 ${formatMoney(totalCost)}，当前现金 ${formatMoney(cashAsset.amount)}`);
-            }
+        // 更新资产（加权平均成本），不检查现金，不扣除现金
+        const oldQty = asset.amount || 0;
+        const oldCost = asset.cost || 0;
+        const newQty = oldQty + qty;
+        const newCost = (oldQty * oldCost + qty * costPrice) / newQty;
+        asset.amount = newQty;
+        asset.cost = newCost;
 
-            const oldQty = asset.amount || 0;
-            const oldCost = asset.cost || 0;
-            const newQty = oldQty + qty;
-            const newCost = (oldQty * oldCost + qty * costPrice) / newQty;
-            asset.amount = newQty;
-            asset.cost = newCost;
-            cashAsset.amount -= totalCost;
-            cashAsset.currentPrice = cashAsset.amount;
+        // 记录交易
+        asset.transactions.push({
+            date: todayStr,
+            type: 'add',
+            qty: qty,
+            price: costPrice
+        });
 
-            asset.transactions.push({
-                date: todayStr,
-                type: 'add',
-                qty: qty,
-                price: costPrice
-            });
+        showToast(`✅ 加仓成功，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
 
-            showToast(`✅ 加仓成功，数量 ${newQty.toFixed(4)}，均价 ${newCost.toFixed(2)}`);
+    } else if (action === 'sub') {
+        // ---- 减仓：输入数量和卖出单价 ----
+        const qtyInput = prompt(`请输入减仓数量（当前持仓 ${asset.amount}）：`, '');
+        if (qtyInput === null) return;
+        const qty = parseFloat(qtyInput);
+        if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
 
-        } else if (action === 'sub') {
-            const qtyInput = prompt(`请输入减仓数量（当前持仓 ${asset.amount}）：`, '');
-            if (qtyInput === null) return;
-            const qty = parseFloat(qtyInput);
-            if (isNaN(qty) || qty <= 0) return showToast('数量必须为正数');
-            if (qty > (asset.amount || 0)) {
-                return showToast(`持仓不足！当前持仓 ${asset.amount} 份`);
-            }
-
-            const priceInput = prompt('请输入卖出单价（元/单位）：', '');
-            if (priceInput === null) return;
-            const sellPrice = parseFloat(priceInput);
-            if (isNaN(sellPrice) || sellPrice <= 0) return showToast('卖出单价必须为正数');
-
-            const sellValue = qty * sellPrice;
-            asset.amount = (asset.amount || 0) - qty;
-
-            let cashAsset = app.assets.find(a => a.type === 'cash');
-            if (!cashAsset) {
-                cashAsset = {
-                    id: 'c' + Date.now(),
-                    type: 'cash',
-                    code: '现金',
-                    amount: 0,
-                    date: todayStr,
-                    currentPrice: 0,
-                    name: '现金'
-                };
-                app.assets.push(cashAsset);
-            }
-            cashAsset.amount += sellValue;
-            cashAsset.currentPrice = cashAsset.amount;
-
-            asset.transactions.push({
-                date: todayStr,
-                type: 'sub',
-                qty: qty,
-                price: sellPrice
-            });
-
-            showToast(`✅ 减仓成功，卖出 ${qty} 份，收入 ${formatMoney(sellValue)}`);
+        if (qty > (asset.amount || 0)) {
+            return showToast(`持仓不足！当前持仓 ${asset.amount} 份`);
         }
 
+        const priceInput = prompt('请输入卖出单价（元/单位）：', '');
+        if (priceInput === null) return;
+        const sellPrice = parseFloat(priceInput);
+        if (isNaN(sellPrice) || sellPrice <= 0) return showToast('卖出单价必须为正数');
+
+        // 更新资产（数量减少，成本不变），不增加现金
+        asset.amount = (asset.amount || 0) - qty;
+
+        // 记录交易
+        asset.transactions.push({
+            date: todayStr,
+            type: 'sub',
+            qty: qty,
+            price: sellPrice
+        });
+
+        showToast(`✅ 减仓成功，卖出 ${qty} 份，卖出价 ${formatMoney(sellPrice)}`);
+    }
+
+    // 保存并刷新
+    await save();
+    renderAll();
+
+    // 如果数量归零，自动移除该资产
+    if (asset.amount <= 0.0001) {
+        app.assets = app.assets.filter(a => a.id !== asset.id);
         await save();
         renderAll();
-
-        if (asset.amount <= 0.0001) {
-            app.assets = app.assets.filter(a => a.id !== asset.id);
-            await save();
-            renderAll();
-            showToast('持仓已清空，资产已移除');
-        }
+        showToast('持仓已清空，资产已移除');
     }
+}
 
     // ========== 渲染 ==========
     function renderAll() {
